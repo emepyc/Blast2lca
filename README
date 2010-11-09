@@ -1,0 +1,134 @@
+Blast2lca 0.01 (Nov 2010) README file
+
+INTRODUCTION
+============
+
+Blast2lca is a tool designed to help in the taxonomical assigned of biological sequences through BLAST (http://www.ncbi.nlm.nih.gov/pmc/articles/PMC146917/?tool=pubmed) based homology searches. For this assignment it calculates the lowest common ancestor (LCA: http://en.wikipedia.org/wiki/Lowest_common_ancestor) of the best scoring homologs. It works in a similar way as the MEGAN[3] tool.
+
+Its input is the output of the BLAST program (tab formatted with "-m8" option in blastall or "-outfmt 6" in blast+ programs). The "subject" field must contain its GI identifier in the form "gi|xxxxxxxxxx|" where "x"s are the actual identifier (this is likely to happen if you use NCBI databases like nr or nt).
+
+You will also need the Taxonomy database from the NCBI (the taxdump.[gz|tar.gz|tar.Z] and the gi_taxid_[nucl|prot].[zip|dmp.gz] files. These files can be downloaded at ftp://ftp.ncbi.nih.gov/pub/taxonomy/. See HOW TO RUN THE PROGRAM BELOW.
+
+
+A note on MEGAN:
+-----------------
+MEGAN (http://www-ab.informatik.uni-tuebingen.de/software/megan) is a nice tool for global analysis and taxonomic representation of metagenomic sequences but while working with it we noticed a few issues that prevent its use for our specific needs:
+
+- Although written in Java, MEGAN is not a very fast tool, or at least, not fast enough when you are analyzing many >10e5 sequences. Working with 454-Titanium runs we noticed long hangs and crashes.
+
+- MEGAN focuses in the global analysis of the input sequences. This means that it needs to track information of all the sequences being analyzed to show the final trees, etc. But many times we prefer to get the LCA of each individual sequence to further analyze them using different statistical methods. Unfortunately, when exporting the LCA of each individual sequence MEGAN doesn't inform you about the taxonomic rank or level the LCA is, making it hard i) to know how specific the LCA is and ii) to postprocess this LCA information (for example, group by "family" level).
+
+- It works with the full (pairwise) output of BLAST instead of the more compacted tabular form. This means that if you are working with many sequences i) BLAST will be slower and ii) Your input to MEGAN will be orders of magnitud bigger.
+
+- It is not obvious how to update the taxonomy information that MEGAN uses. The NCBI's Taxonomy database is dynamic and interpreting a recent BLAST result with an outdated taxonomy leads to a greater number of unassigned hits and sequences.
+
+Some of these concerns were commented with the MEGAN development team (Dr. Huson's lab) and we are greatful for the inclusion of some of them in the MEGAN package (for example, now MEGAN is able to deal with a modified BLAST tabular format that must include an extra column with the Taxid of the subject GIs, for us this is far better than having to run all the BLAST with full/pairwise output). But finally we decided to build a tool that tackles these specific issues.
+
+Blast2lca is:
+
++ Fast: It is multicore. Has been used in a 24-nodes server obtaining > 20x accelerations. We are however trying to improve the speed of each individual thread.
+
++ Simple: Its input is a tabular blast result (-m8) and the NCBI's taxonomy database. Its output is the sequence IDs and their LCA. There is only one aditional step: you have to reformat the gi_taxid[nucl|prot].[zip|dmp.gz] file that serves the GI to taxid mappings (available at the NCBI site (ftp://ftp.ncbi.nih.gov/pub/taxonomy/) to speed up things.
+
++ Transparent: Since you use the NCBI's Taxonomy database directly you can be always up-to-date with the current releases.
+
+Of course, Blast2lca doesn't give you all the other goodies that MEGAN offers you (functional classification, Tree visualization, etc...).
+
+
+A note on Go:
+-------------
+Blast2lca is written in Google's Go programming language (http://golang.org/). This language claims to be nearly as fast as C. Unfortunately it is not a mature language yet. This means that code written in current Go may be broken as the language evolves and that its runtime is still not as fast and efficient as it should be. As part of the maintenance of this program I will keep this code up to date with the latest Go implementations.
+
+
+INSTALLATION:
+=============
+
+To build the blast2lca binary download the distribution and:
+
+tar -xzvf Blast2lca-xxxx
+cd Blast2lca-xxxx
+make
+
+There is not a make install. Blast2lca binary is the current directory.
+
+
+COMMON USAGE:
+=============
+
+1.- Taxonomy DB preparation:
+----------------------------
+The first time you use this software (and in general everytime you want to update the Taxonomy database) you should to prepare the Taxonomy database to use with Blast2lca. Follow these steps:
+
+1.- Download the Taxonomy database from NCBI's site (only taxdump.tgz and gi_taxid[nucl|prot].dmp.gz are needed).
+
+$ wget ftp://ftp.ncbi.nih.gov/pub/taxonomy/taxdump.tar.gz
+$ wget ftp://ftp.ncbi.nih.gov/pub/taxonomy/gi_taxid_nucl.dmp.gz
+
+2.- Uncompress
+
+$ tar -xzvf taxdump.tar.gz
+$ gunzip gi_taxid_nucl.dmp.gz # or gi_taxid_prot.dmp.gz
+
+3.- Convert gi_taxid_[prot|nucl].dmp to binary format:
+
+$ perl /path/to/Blast2lca/tools/tax2bin2.pl gi_taxid_nucl.dmp > gi_taxid_nucl.bin
+
+Were "/path/to/Blast2lca/" is the path where you have downloaded Blast2lca.
+
+Note: In the above steps substitute "gi_taxid_nucl.dmp.gz" by "gi_taxid_prot.dmp.gz" if your blasts have been run against a protein database (nr).
+
+
+2.- Run the program:
+--------------------
+$ ./blast2lca [options] <blast>
+Where options are:
+
+      --version:
+              Prints the current version and exits
+
+      --help:
+              Prints the usage of the software and exits
+
+      --ncpus:
+              Number of CPUs to use (defaults to 4)
+
+      --nodes:
+              Path to the nodes.dmp file downloaded from the NCBI's Taxonomy DB
+              Defaults to "nodes.dmp"
+
+      --names:
+              Path to the names.dmp file downloaded from the NCBI's Taxonomy DB
+              Defaults to "names.dmp"
+
+      --dict:
+             Path to the binary file you have obtained from the previous step
+
+      --level:
+             The taxonomic level you want to filter the LCA.
+             If the LCA of a sequence is lower than the specified level, you will get this instead.
+             If the LCA of a sequence is higher than the specified level, you will get the true LCA but with the letters "uc_" preppended ("uc" stands for unclassified).
+
+3.- Output:
+----------
+For each input query sequence you will obtain its header and its LCA (separated by a tab).
+
+
+
+BUGS:
+=====
+
+TO-DO:
+------
+ + Include in one dictionary the "nucl" and "prot" versions of "gi_taxid" since the resulting dictionary will occupy the same space
+ + Allow real (unfiltered) LCAs.
+
+Known problems:
+---------------
+ + When the LCA is above Superkingdom, "Bacteria" is reported as the LCA. This will be solved in the next release.
+
+CONTACT:
+========
+For bug reports, feature requests or comments, please send an email to emepyc@gmail.com
+
+
+
