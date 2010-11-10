@@ -43,13 +43,15 @@ Blast2lca is written in Google's Go programming language (http://golang.org/). T
 INSTALLATION:
 =============
 
-To build the blast2lca binary download the distribution and:
+To build the blast2lca binary you need the Go developing tools (available at http://golang.or).
+Once you get the source of Blast2lca:
 
-tar -xzvf Blast2lca-xxxx
 cd Blast2lca-xxxx
 make
 
 There is not a make install. Blast2lca binary is the current directory.
+
+Alternatively, you can download the binaries available.
 
 
 COMMON USAGE:

@@ -208,7 +208,7 @@ func readnames(b *bufio.Reader, namesch chan<- *tids, bch chan<- bool) {
 }
 
 func parsename(l []byte) *tids {
-	parts := bytes.Split(l, []byte(sep), 0)
+	parts := bytes.Split(l, []byte(sep), -1)
 	tid, _ := strconv.Atoi(fmt.Sprintf("%s", parts[0]))
 	newName := &tids{
 		tid,

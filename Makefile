@@ -8,3 +8,6 @@
 TARGET=blast2lca
 all:
 	cd src && make && cp $(TARGET) .. && cd ..
+
+clean:
+	cd src && make clean && cd ..
