@@ -161,6 +161,9 @@ func (t *taxonomy) PathFromGi(gi int) []*Taxnode {
 }
 
 func (t *taxonomy) TaxidFromGi(gi int) int {
+	if gi == -1 {
+		return -1
+	}
 	pos := gi*4
 	b := t.gimap
 	if len(b) < pos+3 {

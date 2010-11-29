@@ -65,8 +65,9 @@ func (b *Blast) extractGI() (gi int) {
 	giRx := regexp.MustCompile(`gi\|([0-9]+)\|`) // Sacar fuera?
 	gis := giRx.FindSubmatch(b.subject)
 	if gis == nil || len(gis) == 0 {
-		fmt.Fprintf(os.Stderr, "No GI found in blast record\n")
-		os.Exit(1)
+		fmt.Fprintf(os.Stderr, "No GI found in blast record: %s => %s\n", b.query, b.subject)
+		gi = -1
+		return
 	}
 	if len(gis) > 2 {
 		fmt.Fprintf(os.Stderr, "More than one GI found in blast record. Only the first will be used\n")
