@@ -13,7 +13,7 @@ import (
 //	"bytes"
 )
 
-const VERSION = 0.01
+const VERSION = 0.02
 
 const (
 	lcalim = 0.1
