@@ -1,13 +1,13 @@
-Blast2lca 0.01 (Nov 2010) README file
+Blast2lca 0.02 (Nov 2010) README file
 
 INTRODUCTION
 ============
 
-Blast2lca is a tool designed to help in the taxonomical assigned of biological sequences through BLAST (http://www.ncbi.nlm.nih.gov/pmc/articles/PMC146917/?tool=pubmed) based homology searches. For this assignment it calculates the lowest common ancestor (LCA: http://en.wikipedia.org/wiki/Lowest_common_ancestor) of the best scoring homologs. It works in a similar way as the MEGAN[3] tool.
+Blast2lca is a tool designed to help in the taxonomical assignment of biological sequences through BLAST (http://www.ncbi.nlm.nih.gov/pmc/articles/PMC146917/?tool=pubmed) based homology searches. For this assignment it calculates the lowest common ancestor (LCA: http://en.wikipedia.org/wiki/Lowest_common_ancestor) of the best scoring homologs. It works in a similar way as the MEGAN tool (see below for details).
 
 Its input is the output of the BLAST program (tab formatted with "-m8" option in blastall or "-outfmt 6" in blast+ programs). The "subject" field must contain its GI identifier in the form "gi|xxxxxxxxxx|" where "x"s are the actual identifier (this is likely to happen if you use NCBI databases like nr or nt).
 
-You will also need the Taxonomy database from the NCBI (the taxdump.[gz|tar.gz|tar.Z] and the gi_taxid_[nucl|prot].[zip|dmp.gz] files. These files can be downloaded at ftp://ftp.ncbi.nih.gov/pub/taxonomy/. See HOW TO RUN THE PROGRAM BELOW.
+You will also need the Taxonomy database from the NCBI (the taxdump.[gz|tar.gz|tar.Z] and the gi_taxid_[nucl|prot].[zip|dmp.gz] files. These files can be downloaded from ftp://ftp.ncbi.nih.gov/pub/taxonomy/. See HOW TO RUN THE PROGRAM below.
 
 
 A note on MEGAN:
@@ -32,26 +32,27 @@ Blast2lca is:
 
 + Transparent: Since you use the NCBI's Taxonomy database directly you can be always up-to-date with the current releases.
 
-Of course, Blast2lca doesn't give you all the other goodies that MEGAN offers you (functional classification, Tree visualization, etc...).
+Of course, Blast2lca doesn't give you all the other goodies that MEGAN offers you (functional classification, fancy tree visualization, etc...).
 
 
 A note on Go:
 -------------
-Blast2lca is written in Google's Go programming language (http://golang.org/). This language claims to be nearly as fast as C. Unfortunately it is not a mature language yet. This means that code written in current Go may be broken as the language evolves and that its runtime is still not as fast and efficient as it should be. As part of the maintenance of this program I will keep this code up to date with the latest Go implementations.
+Blast2lca is written in Google's Go programming language (http://golang.org/). This is a great language but still not mature. This means that code written in current Go may be broken as the language evolves and that its runtime is still not as fast and efficient as it will be. As part of the maintenance of this program I will keep this code up to date with the latest Go implementations.
 
 
 INSTALLATION:
 =============
 
-To build the blast2lca binary you need the Go developing tools (available at http://golang.or).
+It is recommended to use the binaries provided with the distribution. If you need a binary not available in this site you can ask me and I will try to build it for you. Alternatively, you can compile the program yourself.
+
+To build the blast2lca binary you need the Go developing tools (available at http://golang.org).
 Once you get the source of Blast2lca:
 
 cd Blast2lca-xxxx
 make
 
-There is not a make install. Blast2lca binary is the current directory.
+There is not a "make install". Blast2lca binary will be placed in the current directory.
 
-Alternatively, you can download the binaries available.
 
 
 COMMON USAGE:
@@ -59,14 +60,14 @@ COMMON USAGE:
 
 1.- Taxonomy DB preparation:
 ----------------------------
-The first time you use this software (and in general everytime you want to update the Taxonomy database) you should to prepare the Taxonomy database to use with Blast2lca. Follow these steps:
+The first time you use this software (and in general everytime you want to update the Taxonomy database) you should prepare the Taxonomy database for its usage with Blast2lca. Follow these steps:
 
 1.- Download the Taxonomy database from NCBI's site (only taxdump.tgz and gi_taxid[nucl|prot].dmp.gz are needed).
 
 $ wget ftp://ftp.ncbi.nih.gov/pub/taxonomy/taxdump.tar.gz
 $ wget ftp://ftp.ncbi.nih.gov/pub/taxonomy/gi_taxid_nucl.dmp.gz
 
-2.- Uncompress
+2.- Uncompress & untar
 
 $ tar -xzvf taxdump.tar.gz
 $ gunzip gi_taxid_nucl.dmp.gz # or gi_taxid_prot.dmp.gz
@@ -105,15 +106,26 @@ Where options are:
       --dict:
              Path to the binary file you have obtained from the previous step
 
-      --level:
-             The taxonomic level you want to filter the LCA.
+      --levels:
+             The taxonomic levels you want from the LCA.
              If the LCA of a sequence is lower than the specified level, you will get this instead.
              If the LCA of a sequence is higher than the specified level, you will get the true LCA but with the letters "uc_" preppended ("uc" stands for unclassified).
+	     You can pass a series of taxonomy levels separated by ":", see the example below
+
+Example:
+$ ./blast2lca -names names.dmp -nodes nodes.dmp -dict gi_taxid_prot.bin -levels superkingdom:phylum:class:family blastm8.txt > lca.txt
 
 3.- Output:
 ----------
-For each input query sequence you will obtain its header and its LCA (separated by a tab).
+For each input query sequence you will obtain its header and its taxons according to the LCA (separated by a tab).
+Example:
+GCQ6XTU01A3NBL	Bacteria;Firmicutes;Bacilli;Streptococcaceae
+GCQ6XTU01A3N9G	Bacteria;Cyanobacteria;uc_Cyanobacteria;uc_Chroococcales
+GCQ6XTU01A3N88	Bacteria;Proteobacteria;Gammaproteobacteria;Pasteurellaceae
+GCQ6XTU01A3N8G	Bacteria;Proteobacteria;Deltaproteobacteria;Myxococcaceae
+GCQ6XTU01A3NC4	Bacteria;Firmicutes;Bacilli;Streptococcaceae
 
+As a fist global visualization of the result you can run the script makeTree.pl (under the tools/ directory) to generate a tree in HTML (+CSS +JavaScript) that can be visualized with any web browser. See the tools/makeTree.README file for (a bit) more information.
 
 
 BUGS:

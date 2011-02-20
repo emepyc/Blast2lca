@@ -50,6 +50,16 @@ func (t *taxonomy) OverLevel(level []byte) *map[string]int {
 	return &mm
 }
 
+func (t *taxonomy) AtLevels(id int, levs []byte) [][]byte {
+	allLevs := bytes.Split(levs, []byte(":"), -1)
+	l := len(allLevs)
+	taxs := make([][]byte,l)
+	for i,lev := range allLevs {
+		taxs[i] = t.AtLevel(id, lev)
+	}
+	return taxs
+}
+
 func (t *taxonomy) AtLevel(id int, lev []byte) []byte {
 	if id == 1 {
 		return ([]byte("uc_no_rank"))

@@ -1,0 +1,6 @@
+
+Sunday 20-02-2011
+       + Now it is possible to ask for different taxonomical levels (-levels) option. See the README
+       + Corrected several typos of the README
+       + Included the tool makeTree.pl. Allows a rudimentary analysis of the results using a tree. See the makeTree.README under the tools/ directory
+

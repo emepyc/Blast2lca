@@ -1,0 +1,15 @@
+makeTree.pl (Feb 2011) README file
+
+makeTree.pl is a tool designated to parse the output of the blast2lca program to have a first preliminary global analysis of the results.
+
+Its output is a taxonomic tree in HTML (+CSS +JavaScript). You can
+open this tree with any web browser. It uses different font sizes and
+colors in leafs to denote different relative abundance of each taxon in each level.
+
+To run the script:
+
+$ perl makeTree.pl tax.lca > tax.html
+
+contact:
+
+emepyc@gmail.com

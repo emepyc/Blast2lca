@@ -10,7 +10,7 @@ import (
 	"runtime"
 	"flag"
 	"sync"
-//	"bytes"
+	"bytes"
 )
 
 const VERSION = 0.02
@@ -39,7 +39,7 @@ func init() {
 	flag.StringVar(&nodesflag,"nodes","nodes.dmp","nodes.dmp file of taxonomy")
 	flag.StringVar(&namesflag,"names","names.dmp","names.dmp file of taxonomy")
 	flag.StringVar(&dictflag,"dict","", "dict file of taxonomy")
-	flag.StringVar(&taxlevel,"level","family","Desired taxonomical level")
+	flag.StringVar(&taxlevel,"levels","family","Desired taxonomical levels")
 	flag.BoolVar(&verflag,"version",false,"Print VERSION and exits")
 	flag.BoolVar(&helpflag,"help",false,"Print USAGE and exits")
 	flag.Parse()
@@ -116,8 +116,9 @@ LOOP: for {
 				}
 //				func() {
 				lcaId := taxonomy.LCA(paths)
-				fam := taxDB.AtLevel(lcaId, []byte(taxlevel))
-				printf("%s\t%s\n",k.Query,fam)
+				fam := taxDB.AtLevels(lcaId, []byte(taxlevel))
+				allFams := bytes.Join(fam,[]byte(";"))
+				printf("%s\t%s\n",k.Query,allFams)
 //				fmt.Printf("%s\t%s\n", k.Query, fam)
 //				fmt.Println("\n\n")
 				busy <- true
