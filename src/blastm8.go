@@ -22,17 +22,17 @@ const (
 type Blast struct {
 	query, subject         []byte
 	qfrom, qto, sfrom, sto int
-	eval, bitsc            float
+	eval, bitsc            float32
 }
 
 type HType struct {
 	GI int
-	BS float
+	BS float32
 }
 
 type Rep2LCA struct {
 	Query  []byte
-//	bscLim float
+//	bscLim float32
 	Hits   []*HType
 }
 
@@ -56,7 +56,7 @@ func bestOf(qC []*Blast) []*Blast {
 			break
 		}
 	}
-	nlim := float(n) * lcalim
+	nlim := float32(n) * lcalim
 	fmt.Println("..", nlim)
 	return (qC[0:int(nlim)])
 }
@@ -132,8 +132,8 @@ func parseblast(line []byte) *Blast {
 	qto, _ := strconv.Atoi(fmt.Sprintf("%s", parts[8]))
 	sfrom, _ := strconv.Atoi(fmt.Sprintf("%s", parts[7]))
 	sto, _ := strconv.Atoi(fmt.Sprintf("%s", parts[9]))
-	eval, _ := strconv.Atof(fmt.Sprintf("%s", parts[10]))
-	bitsc, bse := strconv.Atof(fmt.Sprintf("%s", bitscStr))
+	eval, _ := strconv.Atof32(fmt.Sprintf("%s", parts[10]))
+	bitsc, bse := strconv.Atof32(fmt.Sprintf("%s", bitscStr))
 	if bse != nil {
 		fmt.Fprintf(os.Stderr, "Error parsing bit score: %s as integer --- Aborting\n", parts[11])
 		os.Exit(1)

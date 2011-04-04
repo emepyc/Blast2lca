@@ -45,8 +45,11 @@ INSTALLATION:
 
 It is recommended to use the binaries provided with the distribution. If you need a binary not available in this site you can ask me and I will try to build it for you. Alternatively, you can compile the program yourself.
 
-To build the blast2lca binary you need the Go developing tools (available at http://golang.org).
-Once you get the source of Blast2lca:
+To build the blast2lca binary you need the Go developing tools (available at http://golang.org). Remember to set the environmental variable $GOROOT as described in the GO documentation.
+
+export GOROOT=<directory_where_you_installed_go>
+
+Then download the Blast2lca source code from GitHub. Once you have it, uncompress and:
 
 cd Blast2lca-xxxx
 make

@@ -3,3 +3,7 @@ Sunday 20-02-2011
        + Corrected several typos of the README
        + Included the tool makeTree.pl. Allows a rudimentary analysis of the results using a tree. See the makeTree.README under the tools/ directory
        + Included mac OSX 10.6 binary
+
+Monday 04-04-2011
+       + Code updated to meet changes in latest GO implementation
+       + Changes in README -- Update the installation procedure (note $GOROOT dependency)

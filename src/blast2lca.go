@@ -13,7 +13,7 @@ import (
 	"bytes"
 )
 
-const VERSION = 0.02
+const VERSION = 0.03
 
 const (
 	lcalim = 0.1
@@ -91,7 +91,7 @@ LOOP: for {
 				paths := make([][]*taxonomy.Taxnode, 10000)
 				fPos := 0
 				rpos := 0
-				var bscLim float
+				var bscLim float32
 				for _, gibs := range k.Hits {
 //					fmt.Println(gibs,gi)
 					if gibs == nil {
