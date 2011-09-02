@@ -13,6 +13,8 @@ import (
 	"sync"
 	"bytes"
 	"time"
+	"runtime/pprof"
+	"log"
 )
 
 const VERSION = 0.2
@@ -24,6 +26,7 @@ const (
 )
 
 var (
+	cpuprofile string
 	cpuflag                                                                           int
 	dictflag, nodesflag, namesflag, blastfile, taxlevel, gi2kegg, binkegg, bintaxflag string
 	savememflag, verflag, helpflag, keggflag, taxIsBin, keggIsBin                     bool // HINT: keggflag is not set by the user, will be true if gi2kegg and kegg2pw are defined / The same with taxIsBin
@@ -50,6 +53,7 @@ func init() {
 	flag.BoolVar(&savememflag, "savemem", false, "save memory by keeping files in disk [optional]")
 	flag.BoolVar(&verflag, "version", false, "Print VERSION and exits")
 	flag.BoolVar(&helpflag, "help", false, "Print USAGE and exits")
+	flag.StringVar(&cpuprofile, "prof", "", "write cpu profile to file")
 	flag.Parse()
 	//	if (kegg2gi != "" && kegg2pw != "") { // TODO: Treat kegg2gi and kegg2pw independently?
 	if gi2kegg != "" {
@@ -131,12 +135,21 @@ func main() {
 			os.Exit(1)
 		}
 	}
-	queryChan := make(chan *blastm8.QueryRes, (cpuflag+1)) // TODO: Should we do this buffered?
+	queryChan := make(chan *blastm8.QueryRes) // TODO: Should we do this buffered?
 	//	doneChan := make(chan bool)                    // TODO: Should we do this buffered?
 	launched := 0
 	finished := make(chan bool) // TODO: Needed that much?? Profile... any performance impact?
 	//	go blastm8.Procfile(blastbuf, queryChan, doneChan, keggflag)
 	go blastm8.Procfile(blastbuf, queryChan, keggflag)
+
+	if cpuprofile != "" {
+		f, err := os.Create(cpuprofile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
+	}
 
 	t1 := time.Nanoseconds()
 LOOP:

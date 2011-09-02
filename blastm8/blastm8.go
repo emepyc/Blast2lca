@@ -12,7 +12,8 @@ import (
 	"sort" // For transform -- Schwartzian Transformation
 	"bytes"
 	"strconv"
-	"regexp" //HINT: To extract GIs
+//	"regexp" //HINT: To extract GIs
+//	"getgi"
 )
 
 //Global parameters
@@ -24,9 +25,9 @@ const (
 )
 
 //Global vars
-var (
-	giRx *regexp.Regexp = regexp.MustCompile(`gi\|([0-9]+)\|`) // HINT: Compile globally
-)
+// var (
+// 	giRx *regexp.Regexp = regexp.MustCompile(`gi\|([0-9]+)\|`) // HINT: Compile globally
+// )
 
 //Query or Subject -- typical headers of nr/nt as they appear in blast-m8 results
 type Header []byte
@@ -131,22 +132,44 @@ func (h sortByBitsc) Swap(i, j int) {
 }
 
 //Extract the GI of a Subject/Query
-func (b Header) extractGI() (gi int) {
-	gis := giRx.FindSubmatch(b)
-	if gis == nil || len(gis) == 0 {
-		fmt.Fprintf(os.Stderr, "No GI found in Header: %s => %s\n", b)
-		gi = -1
-		return
+// func (b Header) extractGI() (gi int) {
+// 	gis := giRx.FindSubmatch(b)
+// 	if gis == nil || len(gis) == 0 {
+// 		fmt.Fprintf(os.Stderr, "No GI found in Header: %s => %s\n", b)
+// 		gi = -1
+// 		return
+// 	}
+// 	if len(gis) > 2 {
+// 		fmt.Fprintf(os.Stderr, "More than one GI found in blast record. Only the first will be used\n")
+// 	}
+// 	gi, converr := (strconv.Atoi(string(gis[1])))
+// 	if converr != nil {
+// 		fmt.Fprintf(os.Stderr, "Error converting %s to number (GI)\n", gis[1])
+// 		os.Exit(1)
+// 	}
+// 	return
+// }
+
+func (b Header) extractGI () (int, os.Error) {
+	gib := make([]byte, 0, 10)
+	for i,v := range b {
+		if v == 'g' && b[i+1] == 'i' && b[i+2] == '|' {
+			for j:=i+3; j<len(b); j++ {
+				if b[j] == '|' {
+					gi, err := strconv.Atoi(string(gib))
+					if err != nil {
+						return -1, err
+					}
+					return gi, nil
+				}
+				gib = append(gib, b[j])
+			}
+			nerr := os.NewError(fmt.Sprintf("No | found after GI in %s", b))
+			return -1, nerr
+		}
 	}
-	if len(gis) > 2 {
-		fmt.Fprintf(os.Stderr, "More than one GI found in blast record. Only the first will be used\n")
-	}
-	gi, converr := (strconv.Atoi(string(gis[1])))
-	if converr != nil {
-		fmt.Fprintf(os.Stderr, "Error converting %s to number (GI)\n", gis[1])
-		os.Exit(1)
-	}
-	return
+	lerr := os.NewError(fmt.Sprintf("No gi| found in: %s", b))
+	return -1, lerr
 }
 
 func (queryRes *QueryRes) fillBySubj() {
@@ -282,9 +305,15 @@ func parseblast(line []byte) ([]byte, *Hit) {
 	}
 
 	query := parts[0]
+	gi, gierr := Header(parts[1]).extractGI()
+	if gierr != nil {
+		fmt.Fprintf(os.Stderr, "%s", gierr)
+		os.Exit(1)
+	}
 	newB = &Hit{
 //		subject: parts[1],
-	gi:      Header(parts[1]).extractGI(),
+//	gi:      Header(parts[1]).extractGI(),
+	gi: gi,
 	qfrom:   qfrom,
 	qto:     qto,
 	sfrom:   sfrom,
