@@ -26,7 +26,7 @@ const (
 )
 
 var (
-	cpuprofile string
+	cpuprofile, memprofile string
 	cpuflag                                                                           int
 	dictflag, nodesflag, namesflag, blastfile, taxlevel, gi2kegg, binkegg, bintaxflag string
 	savememflag, verflag, helpflag, keggflag, taxIsBin, keggIsBin                     bool // HINT: keggflag is not set by the user, will be true if gi2kegg and kegg2pw are defined / The same with taxIsBin
@@ -53,7 +53,8 @@ func init() {
 	flag.BoolVar(&savememflag, "savemem", false, "save memory by keeping files in disk [optional]")
 	flag.BoolVar(&verflag, "version", false, "Print VERSION and exits")
 	flag.BoolVar(&helpflag, "help", false, "Print USAGE and exits")
-	flag.StringVar(&cpuprofile, "prof", "", "write cpu profile to file")
+	flag.StringVar(&cpuprofile, "cpuprof", "", "write cpu profile to file")
+	flag.StringVar(&memprofile, "memprof", "", "write mem profile to file")
 	flag.Parse()
 	//	if (kegg2gi != "" && kegg2pw != "") { // TODO: Treat kegg2gi and kegg2pw independently?
 	if gi2kegg != "" {
@@ -149,6 +150,15 @@ func main() {
 		}
 		pprof.StartCPUProfile(f)
 		defer pprof.StopCPUProfile()
+	}
+
+	if memprofile != "" {
+		f, err := os.Create(memprofile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		pprof.WriteHeapProfile(f)
+		f.Close()
 	}
 
 	t1 := time.Nanoseconds()
