@@ -12,7 +12,7 @@ import (
 	"sort" // For transform -- Schwartzian Transformation
 	"bytes"
 	"strconv"
-//	"regexp" //HINT: To extract GIs
+	"regexp" //HINT: To extract GIs
 //	"getgi"
 )
 
@@ -25,9 +25,9 @@ const (
 )
 
 //Global vars
-// var (
-// 	giRx *regexp.Regexp = regexp.MustCompile(`gi\|([0-9]+)\|`) // HINT: Compile globally
-// )
+var (
+	giRx *regexp.Regexp = regexp.MustCompile(`gi\|([0-9]+)\|`) // HINT: Compile globally
+)
 
 //Query or Subject -- typical headers of nr/nt as they appear in blast-m8 results
 type Header []byte
@@ -38,6 +38,11 @@ type Hit struct { // Was Blast
 	gi                     int // We may operate in GI space
 	qfrom, qto, sfrom, sto int
 	eval, bitsc            float32
+}
+
+type BlastRec struct {
+	Header
+	Hit
 }
 
 type sortByPos Hits
@@ -157,6 +162,7 @@ func (b Header) extractGI () (int, os.Error) {
 			for j:=i+3; j<len(b); j++ {
 				if b[j] == '|' {
 					gi, err := strconv.Atoi(string(gib))
+//					gi := atoi(gib)
 					if err != nil {
 						return -1, err
 					}
@@ -221,17 +227,13 @@ func (queryRes *QueryRes) fillBySubj() {
 //to a channel
 //func Procfile(iblast *bufio.Reader, queryChan chan<- *QueryRes, done chan<- bool, byFunc bool) {
 func Procfile(iblast *bufio.Reader, queryChan chan<- *QueryRes, byFunc bool) {
+	lineChan := make(chan BlastRec, 1000)
 	hitCollect := new(QueryRes)
 	hitCollect.Best = &Hit{bitsc : 0}
 	var nextHit *Hit
 	var query []byte
-LOOP:
-	for i := 0; ; i++ {
+	for {
 		line, ierr := iblast.ReadBytes('\n')
-//		fmt.Fprintf(os.Stderr, "++LINE: %s, ierr: %s\n", line, ierr);
-//		if len(line) == 0 {   // HINT: For blank lines
-//			continue
-//		}
 		if ierr == os.EOF {
 			if byFunc {
 				hitCollect.fillBySubj()
@@ -239,46 +241,91 @@ LOOP:
 			sort.Sort((sortByBitsc)(hitCollect.Hits))
 			queryChan <- hitCollect
 			close(queryChan)
-			return
+			break
 		}
 		line = line[0:len(line)-1]
-		query, nextHit = parseblast(line)
-//		fmt.Fprintf(os.Stderr, "Q:%s\n", query)
-		if hitCollect.Query == nil {
-			hitCollect.Hits = make([]*Hit, 0, blim)
-			hitCollect.Query = make([]byte, len(query))
-			copy(hitCollect.Query, query)
-			fmt.Fprintf (os.Stderr, "Query => %s\n", hitCollect.Query)
-		}
-		if ! bytes.Equal(hitCollect.Query, query) {
-			if byFunc {
-				hitCollect.fillBySubj()
+		go parseblast(line, lineChan)
+		select {
+		case bline := <-lineChan:
+			nextHit = &bline.Hit
+			query = bline.Header
+//			fmt.Fprintf(os.Stderr, "++%v\n", query)
+			if hitCollect.Query == nil {
+				hitCollect.Hits = make([]*Hit, 0, blim)
+				hitCollect.Query = make([]byte, len(query))
+				copy(hitCollect.Query, query)
 			}
-			sort.Sort((sortByBitsc)(hitCollect.Hits))
-			queryChan <- hitCollect
-			hitCollect = new(QueryRes)
-			hitCollect.Best = nextHit
-			hitCollect.Query = make([]byte, len(query))
-			copy (hitCollect.Query, query)
-			hitCollect.Hits = make([]*Hit, 0, blim)
-			i = 0
+			if ! bytes.Equal(hitCollect.Query, bline.Header) {
+				if byFunc {
+					hitCollect.fillBySubj()
+				}
+				sort.Sort((sortByBitsc)(hitCollect.Hits))
+				queryChan <- hitCollect
+				hitCollect = new(QueryRes)
+				hitCollect.Best = nextHit
+				hitCollect.Query = make([]byte, len(query))
+				copy(hitCollect.Query, query)
+				hitCollect.Hits = make([]*Hit, 0, blim)
+			}
+			if hitCollect.Best.bitsc < nextHit.bitsc {
+				hitCollect.Best = nextHit
+			}
+			hitCollect.Hits = append(hitCollect.Hits, nextHit)
+		default : continue
 		}
-		if i >= blim {
-			continue LOOP
-		}
-		if hitCollect.Best.bitsc < nextHit.bitsc {
-			hitCollect.Best = nextHit
-		}
-		hitCollect.Hits = append(hitCollect.Hits, nextHit)
 	}
 	return
 }
 
-//Parses a single blast hit
-func parseblast(line []byte) ([]byte, *Hit) {
-	var newB *Hit
+// LOOP:
+// 	for i := 0; ; i++ {
+// 		line, ierr := iblast.ReadBytes('\n')
+// 		if ierr == os.EOF {
+// 			if byFunc {
+// 				hitCollect.fillBySubj()
+// 			}
+// 			sort.Sort((sortByBitsc)(hitCollect.Hits))
+// 			queryChan <- hitCollect
+// 			close(queryChan)
+// 			return
+// 		}
+// 		line = line[0:len(line)-1]
+// 		go parseblast(line, lineChan)
+// //		query, nextHit = parseblast(line)
+// 		if hitCollect.Query == nil {
+// 			hitCollect.Hits = make([]*Hit, 0, blim)
+// 			hitCollect.Query = make([]byte, len(query))
+// 			copy(hitCollect.Query, query)
+// 		}
+// 		if ! bytes.Equal(hitCollect.Query, query) {
+// 			if byFunc {
+// 				hitCollect.fillBySubj()
+// 			}
+// 			sort.Sort((sortByBitsc)(hitCollect.Hits))
+// 			queryChan <- hitCollect
+// 			hitCollect = new(QueryRes)
+// 			hitCollect.Best = nextHit
+// 			hitCollect.Query = make([]byte, len(query))
+// 			copy (hitCollect.Query, query)
+// 			hitCollect.Hits = make([]*Hit, 0, blim)
+// 			i = 0
+// 		}
+// 		if i >= blim {
+// 			continue LOOP
+// 		}
+// 		if hitCollect.Best.bitsc < nextHit.bitsc {
+// 			hitCollect.Best = nextHit
+// 		}
+// 		hitCollect.Hits = append(hitCollect.Hits, nextHit)
+// 	}
+// 	return
+// }
 
-	parts := bytes.Split(line, []byte("\t")) // For recent releases, n should be < 0
+//Parses a single blast hit
+func parseblast(line []byte, lineChan chan BlastRec) {
+	var newB *Hit
+	parts := bytes.Split(line, []byte("\t"))
+
 	var bitscStr []byte
 	if parts[11][0] == 32 {
 		bitscStr = parts[11][1:]
@@ -288,9 +335,13 @@ func parseblast(line []byte) ([]byte, *Hit) {
 
 	// TODO: we don't give strand information, should we??
 	qfrom, _ := strconv.Atoi(string(parts[6]))
+//	qfrom := atoi(parts[6])
 	qto, _ := strconv.Atoi(string(parts[7]))   // Weird ... it was 8!!??
+//	qto := atoi(parts[7])
 	sfrom, _ := strconv.Atoi(string(parts[8])) // Weird ... it was 7!!??
+//	sfrom := atoi(parts[8])
 	sto, _ := strconv.Atoi(string(parts[9]))
+//	sto := atoi(parts[9])
 	eval, _ := strconv.Atof32(string(parts[10]))  // Used? If not... remove
 	bitsc, bse := strconv.Atof32(string(bitscStr))
 	qfromto := []int{qfrom, qto}
@@ -305,6 +356,68 @@ func parseblast(line []byte) ([]byte, *Hit) {
 	}
 
 	query := parts[0]
+//	gi := Header(parts[1]).extractGI()
+	gi, gierr := Header(parts[1]).extractGI()
+	if gierr != nil {
+		fmt.Fprintf(os.Stderr, "%s", gierr)
+		os.Exit(1)
+	}
+	newB = &Hit{
+//		subject: parts[1],
+//	gi:      Header(parts[1]).extractGI(),
+	gi: gi,
+	qfrom:   qfrom,
+	qto:     qto,
+	sfrom:   sfrom,
+	sto:     sto,
+	eval:    eval,
+	bitsc:   bitsc}
+	newB.subject = make([]byte, len(parts[1]))
+	copy(newB.subject, parts[1])
+//	newB.subject = parts[1] ?
+	lineChan<-BlastRec{query, *newB}
+//	fmt.Fprintf(os.Stderr, "Here\nLINE:%s\nquery: %s\nHit: %v\n\n", line, query, *newB)
+	return
+//	return query, newB
+}
+
+
+func parseblast2(line []byte) ([]byte, *Hit) {
+	var newB *Hit
+
+	parts := bytes.Split(line, []byte("\t"))
+//	parts := getFields(line)
+	var bitscStr []byte
+	if parts[11][0] == 32 {
+		bitscStr = parts[11][1:]
+	} else {
+		bitscStr = parts[11]
+	}
+
+	// TODO: we don't give strand information, should we??
+//	qfrom, _ := strconv.Atoi(string(parts[6]))
+	qfrom := atoi(parts[6])
+//	qto, _ := strconv.Atoi(string(parts[7]))   // Weird ... it was 8!!??
+	qto := atoi(parts[7])
+//	sfrom, _ := strconv.Atoi(string(parts[8])) // Weird ... it was 7!!??
+	sfrom := atoi(parts[8])
+//	sto, _ := strconv.Atoi(string(parts[9]))
+	sto := atoi(parts[9])
+	eval, _ := strconv.Atof32(string(parts[10]))  // Used? If not... remove
+	bitsc, bse := strconv.Atof32(string(bitscStr))
+	qfromto := []int{qfrom, qto}
+	sort.Ints(qfromto)
+	qfrom, qto = qfromto[0], qfromto[1] // qfrom and qto are now sorted
+	sfromto := []int{sfrom, sto}
+	sort.Ints(sfromto)
+	sfrom, sto = sfromto[0], sfromto[1] // sfrom and sto are now sorted
+	if bse != nil {
+		fmt.Fprintf(os.Stderr, "Error parsing bit score: %s as integer --- Aborting\n", parts[11])
+		os.Exit(1)
+	}
+
+	query := parts[0]
+//	gi := Header(parts[1]).extractGI()
 	gi, gierr := Header(parts[1]).extractGI()
 	if gierr != nil {
 		fmt.Fprintf(os.Stderr, "%s", gierr)
@@ -322,6 +435,44 @@ func parseblast(line []byte) ([]byte, *Hit) {
 	eval:    eval}
 	newB.subject = make([]byte, len(parts[1]))
 	copy(newB.subject, parts[1])
+//	newB.subject = parts[1] ?
 	return query, newB
 }
 
+func getFields (line []byte) [][]byte {
+	fields := make ([][]byte, 0, 12)
+	this := make([]byte, 0, 20)
+	for _, ch := range line {
+		if ch == 9 { // \t
+			fields = append(fields, this)
+			this = make([]byte, 0, 20)
+			continue
+		}
+		if ch == 10 { // \n
+			fields = append(fields, this)
+			return fields
+		}
+		this = append(this, ch)
+	}
+	fields = append(fields, this)
+	return (fields)
+}
+
+func atoi (dbytes []byte) int {
+	i := 0
+	is_negative := false
+
+	for _, ch := range dbytes {
+		if ch < 15 && ch > 26 && ch != 13 { // !is_digit(ch) && ch != '-'
+			continue
+		}
+		if ch == 13 { // -
+			is_negative = true
+		}
+		i = (i*10) + (int(ch) - 16)%10
+	}
+	if is_negative {
+		return i
+	}
+	return -i
+}
