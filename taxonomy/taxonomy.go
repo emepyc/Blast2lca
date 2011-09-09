@@ -88,7 +88,7 @@ type auxNode struct {
 type taxTree map[int]*Taxnode
 type auxTree map[int]*auxNode
 
-type taxonomy struct {
+type Taxonomy struct {
 	T       taxTree
 	G       giTaxid.GiMapper
 	D       map[int]int // from values to indexes
@@ -268,9 +268,9 @@ func newTaxonomy(b *bufio.Reader, maxNodes int) (taxTree, map[int]int, os.Error)
 	return nil, nil, nil // never used
 }
 
-func New(opts *InOpts) (*taxonomy, os.Error) {
+func New(opts *InOpts) (*Taxonomy, os.Error) {
 	// T : taxtree => tax
-	t := &taxonomy{}
+	t := &Taxonomy{}
 	if opts.TaxIsBin {
 		s1 := time.Nanoseconds()
 		fmt.Fprintf(os.Stderr, "Loading taxonomy tree ... ")
@@ -399,7 +399,7 @@ func RMQ(M [][]int, A []int, i, j int) (rmq int) {
 	return
 }
 
-func (t taxonomy) LCA(values ...int) (*Taxnode, os.Error) {
+func (t Taxonomy) LCA(values ...int) (*Taxnode, os.Error) {
 	indexes := make([]int, 0, len(values))
 	for _, v := range values { // from values to indexes
 		if _, ok := t.D[v]; ok { // HINT -- There may be taxids not in taxonomy
@@ -430,7 +430,7 @@ func LCAhelper(E, L, H []int, M [][]int, i, j int) int {
 	return lca
 }
 
-func (t taxonomy) Node(taxid int) *Taxnode {
+func (t Taxonomy) Node(taxid int) *Taxnode {
 	id, ok := t.D[taxid]
 	if !ok {
 		return nil
@@ -442,7 +442,7 @@ func (t taxonomy) Node(taxid int) *Taxnode {
 	return node
 }
 
-func (t taxonomy) Path(taxid int) []*Pathnode {
+func (t Taxonomy) Path(taxid int) []*Pathnode {
 	node := t.Node(taxid)
 	path := make([]*Pathnode, 0, 10)
 	for {
@@ -460,7 +460,7 @@ func (t taxonomy) Path(taxid int) []*Pathnode {
 	return nil
 }
 
-func (t *taxonomy) PathFromGi(gi int) ([]*Pathnode, os.Error) {
+func (t *Taxonomy) PathFromGi(gi int) ([]*Pathnode, os.Error) {
 	taxid, err := t.TaxidFromGi(gi)
 	if err != nil {
 		return nil, err
@@ -468,7 +468,7 @@ func (t *taxonomy) PathFromGi(gi int) ([]*Pathnode, os.Error) {
 	return t.Path(taxid), nil
 }
 
-func (t *taxonomy) TaxidFromGi(gi int) (int, os.Error) {
+func (t *Taxonomy) TaxidFromGi(gi int) (int, os.Error) {
 	taxid, err := t.G.GiTaxid(gi)
 	if err != nil {
 		return -1, err
@@ -476,11 +476,11 @@ func (t *taxonomy) TaxidFromGi(gi int) (int, os.Error) {
 	return taxid, nil
 }
 
-func (t *taxonomy) Parent(node *Taxnode) *Taxnode {
+func (t *Taxonomy) Parent(node *Taxnode) *Taxnode {
 	return t.T[node.Parent]
 }
 
-func (t *taxonomy) AtLevels(node *Taxnode, levs ...[]byte) [][]byte {
+func (t *Taxonomy) AtLevels(node *Taxnode, levs ...[]byte) [][]byte {
 	taxAtLevels := make([][]byte, 0, len(levs))
 	//	fmt.Println("NODE : ", node)
 	//	os.Exit(0)
@@ -509,7 +509,7 @@ func (t *taxonomy) AtLevels(node *Taxnode, levs ...[]byte) [][]byte {
 	return taxAtLevels
 }
 
-func (t *taxonomy) AllLevels(node *Taxnode) map[string][]byte {
+func (t *Taxonomy) AllLevels(node *Taxnode) map[string][]byte {
 	//	fmt.Println("NODE2: ",node)
 	taxons := make(map[string][]byte, 15)
 	for {
@@ -525,7 +525,7 @@ func (t *taxonomy) AllLevels(node *Taxnode) map[string][]byte {
 	return nil // Should be never used
 }
 
-func (t *taxonomy) AtLevel(node *Taxnode, lev []byte) []byte {
+func (t *Taxonomy) AtLevel(node *Taxnode, lev []byte) []byte {
 	for {
 		if bytes.Compare(node.Taxon, lev) == 0 {
 			return node.Name
@@ -540,12 +540,12 @@ func (t *taxonomy) AtLevel(node *Taxnode, lev []byte) []byte {
 	return []byte("no rank++")
 }
 
-func Load(fname string) (*taxonomy, os.Error) {
+func Load(fname string) (*Taxonomy, os.Error) {
 	fh, err := os.Open(fname)
 	if err != nil {
 		return nil, err
 	}
-	t := &taxonomy{}
+	t := &Taxonomy{}
 	dec := gob.NewDecoder(fh)
 	err = dec.Decode(&t)
 	if err != nil {
@@ -554,7 +554,7 @@ func Load(fname string) (*taxonomy, os.Error) {
 	return t, nil
 }
 
-func (t taxonomy) Store(fname string) (int, os.Error) {
+func (t Taxonomy) Store(fname string) (int, os.Error) {
 	t.G = nil // We Store without GiTaxid mappings
 	b := new(bytes.Buffer)
 	enc := gob.NewEncoder(b)
