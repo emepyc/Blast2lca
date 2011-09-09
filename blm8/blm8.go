@@ -9,10 +9,15 @@ import (
 	"flag"
 	"runtime/pprof"
 	"log"
+	"runtime"
 )
 
 var cpuprof = flag.String("cpuprof", "", "write cpu profile to file")
 var fname = flag.String("fname", "", "input blast file")
+
+func init () {
+	runtime.GOMAXPROCS(4)
+}
 
 func main () {
 //	fname := "/home/mp/Documents/courses/PublicHealth_ValAgo2011/seqs/metagenome.blout.full"
@@ -40,7 +45,7 @@ func main () {
 	for k := range queryChan {
 		n++
 		k=k
-		fmt.Printf("1\n")
+		fmt.Printf("%s\n", k.Query)
 	}
 	t2 := time.Nanoseconds()
 	secs := float32(t2-t1)/1e9
