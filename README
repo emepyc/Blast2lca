@@ -1,4 +1,15 @@
-Blast2lca 0.02 (Nov 2010) README file
+Blast2lca 0.10 (Jun 2010) README file
+
+TUTORIAL
+========
+
+If you want to try blast2lca before reading the full documentation, follow these steps:
+
+1.- Downloads:
+1.1.- Blast2lca binary from GitHub
+1.2.- The NCBI's taxonomy database from XXXXX (in particular the following files: taxdump.tar.gz, and the gi_taxid_[prot/nucl].dmp file needed)
+1.3.- If you want functional annotations, download the KEGG database from XXXXX, in particular the following files.
+1.4.- Reformat the 
 
 INTRODUCTION
 ============
