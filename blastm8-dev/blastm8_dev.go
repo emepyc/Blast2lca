@@ -18,6 +18,11 @@ type Hit struct {
 	qfrom, qto, sfrom, sto int
 	bitsc int // float??
 }
+type QueryRes struct {
+	Query Header
+	Best *Hit
+	Hits []*Hit
+}
 
 func ProcFile (iblast *bufio.Reader) {
 	lines := 0
@@ -25,12 +30,12 @@ func ProcFile (iblast *bufio.Reader) {
 	t1 := time.Nanoseconds()
 	readQuery := make([]byte, 30)
 	readBlock := make([][]byte, 100) // TODO: set length to blim
-	procBloc := make(chan [], 4)
+	procBlocChan := make(chan *QueryRes, 4)
 	for {
 		line, ierr := iblast.ReadBytes('\n')
 		if ierr == os.EOF {
 			fmt.Fprintf(os.Stdout, "Query! %s\n", readQuery)
-//			_ = procBloc(readBlock
+			go procBloc(readQuery, readBlock, procBlocChan)
 			break
 		}
 		lines++
@@ -61,9 +66,38 @@ func ProcFile (iblast *bufio.Reader) {
 	
 }
 
-func parseblast (line Line) [][]byte {
+func parseLine (line Line) *Hit {
 	parts := bytes.Split(line, []byte("\t"))
-	return parts
+	var bitscStr []byte
+	if parts[11][0] == ' ' {
+		bitscStr = parts[11][1:]
+	} else {
+		bitscStr = parts[11]
+	}
+
+	qfrom, _ := strconv.Atoi(string(parts[6]))
+	qto  , _ := strconv.Atoi(string(parts[7]))
+	sfrom, _ := strconv.Atoi(string(parts[8]))
+	sto  , _ := strconv.Atoi(string(parts[9]))
+	bitsc, _ := strconv.Atof32(string(parts[10]))
+	if qfrom > qto {
+		qfrom, qto = qto, qfrom
+	}
+	if sfrom > sto {
+		sfrom, sto = sto, sfrom
+	}
+	gi, gierr := Header(parts[1]).extractGI()
+	if gierr != nil {
+		log.Fatal(gierr)
+	}
+	return &Hit {
+	gi: gi,
+        qfrom: qfrom,
+        qto: qto,
+        sfrom: sfrom,
+        sto: sto,
+        bitsc: bitsc }
+	}
 }
 
 func (b Header) extractGI () (int, os.Error) {
@@ -97,4 +131,16 @@ func (l Line) extractQuery () ([]byte, os.Error) {
 	return l[:pos], nil
 }
 
-func ProcBloc (block [][]byte) 
+func ProcBloc (query []byte, block [][]byte, sendChan chan<- *QueryRes ) {
+	newQuery := &QueryRes{}
+	newQuery.Best = &Hit{bitsc : 0}
+	newQuery.Query = make([]byte, len(query)) // IS THIS ALLOCATION NEEDED??
+	copy(newQuery.Query, query)
+	for _,hitline := range block {
+		nextHit := parseLine(Line(hitline));
+		
+		if nextHit.bitsc > newQuery.Best {
+			newQuery.Best = nextHit
+		}
+	}
+}
