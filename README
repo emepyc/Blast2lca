@@ -1,15 +1,40 @@
+<<<<<<< HEAD
 Blast2lca 0.10 (Jun 2010) README file
+=======
+Blast2lca 0.20-dev (Sept 2011) README file
+>>>>>>> e89fd5ad3651902c534e4c995e3d1f4805443d73
 
 TUTORIAL
 ========
 
 If you want to try blast2lca before reading the full documentation, follow these steps:
 
+<<<<<<< HEAD
 1.- Downloads:
 1.1.- Blast2lca binary from GitHub
 1.2.- The NCBI's taxonomy database from XXXXX (in particular the following files: taxdump.tar.gz, and the gi_taxid_[prot/nucl].dmp file needed)
 1.3.- If you want functional annotations, download the KEGG database from XXXXX, in particular the following files.
 1.4.- Reformat the 
+=======
+1.- Download:
+1.1.- Blast2lca binaries (blast2lca, gitaxid2bin, kegg2bin) from GitHub (alternatively, install Blast2lca with goinstall (see below))
+1.2.- The NCBI's taxonomy database from ftp://ftp.ncbi.nih.gov/pub/taxonomy/ (in particular the following files: taxdump.tar.gz, and the gi_taxid_[prot/nucl].dmp file needed). Uncompress & Untar taxdump.tar.gz to get the names.dmp and nodes.dmp files.
+1.3.- If you want functional annotations, download the KEGG database, in particular the file genes_ncbi-gi.list.
+
+2.- Reformat the database files:
+2.1.- gi_taxid_[prot/nucl].dmp :
+  + cd into the directory you downloaded gi_taxid_[prot/nucl].dmp
+  + run gitaxid2bin in that directory
+  + a new file (gi_taxid_[prot/nucl].bin) should appear in that folder
+2.2.- For functional annotations (via KEGG) you need also to reformat the file genes_ncbi-gi.list:
+  + cd into the directory where the file genes_ncbi-gi.list is located
+  + run kegg2bin in that directory
+  + a new file (kegg.bin) should appear in that folder
+
+3.- Run the program:
+For example:
+$ blast2lca -savemem -gi2kegg keggdb/genes_ncbi-gi.list -dict db/gi_taxid_prot.bin -nodes db/nodes.dmp -names db/names.dmp metagenome.blout.127 > metagenome.lca.127 
+>>>>>>> e89fd5ad3651902c534e4c995e3d1f4805443d73
 
 INTRODUCTION
 ============
@@ -19,6 +44,8 @@ Blast2lca is a tool designed to help in the taxonomical assignment of biological
 Its input is the output of the BLAST program (tab formatted with "-m8" option in blastall or "-outfmt 6" in blast+ programs). The "subject" field must contain its GI identifier in the form "gi|xxxxxxxxxx|" where "x"s are the actual identifier (this is likely to happen if you use NCBI databases like nr or nt).
 
 You will also need the Taxonomy database from the NCBI (the taxdump.[gz|tar.gz|tar.Z] and the gi_taxid_[nucl|prot].[zip|dmp.gz] files. These files can be downloaded from ftp://ftp.ncbi.nih.gov/pub/taxonomy/. See HOW TO RUN THE PROGRAM below.
+
+Blast2lca also allows functional mapping through KEGG annotations (SEED annotations will be added --hopefully-- soon).
 
 
 A note on MEGAN:
@@ -43,7 +70,7 @@ Blast2lca is:
 
 + Transparent: Since you use the NCBI's Taxonomy database directly you can be always up-to-date with the current releases.
 
-Of course, Blast2lca doesn't give you all the other goodies that MEGAN offers you (functional classification, fancy tree visualization, etc...).
+Of course, Blast2lca doesn't give you all the other goodies that MEGAN offers you (fancy tree visualization, etc...).
 
 
 A note on Go:
@@ -109,6 +136,10 @@ Where options are:
       --ncpus:
               Number of CPUs to use (defaults to 4)
 
+      --savemem:
+              The data structures used by the program are stored in the hard disk
+              instead of in memory. For now, this option is recommended.
+
       --nodes:
               Path to the nodes.dmp file downloaded from the NCBI's Taxonomy DB
               Defaults to "nodes.dmp"
@@ -117,8 +148,17 @@ Where options are:
               Path to the names.dmp file downloaded from the NCBI's Taxonomy DB
               Defaults to "names.dmp"
 
+      --bintax: [EXPERIMENTAL]
+              Taxonomy in binary format (from tax2bin).
+
       --dict:
-             Path to the binary file you have obtained from the previous step
+              Path to the gi2taxid binary file you have obtained from the previous step
+
+      --gi2kegg:
+              Path to the genes_ncbi-gi.list (from KEGG)
+
+      --binkegg:
+              genes_ncbi-gi.list in binary format (from kegg2bin)
 
       --levels:
              The taxonomic levels you want from the LCA.
@@ -141,6 +181,21 @@ GCQ6XTU01A3NC4	Bacteria;Firmicutes;Bacilli;Streptococcaceae
 
 As a fist global visualization of the result you can run the script makeTree.pl (under the tools/ directory) to generate a tree in HTML (+CSS +JavaScript) that can be visualized with any web browser. See the tools/makeTree.README file for (a bit) more information.
 
+If you are using functional annotations, these will appear in the third column:
+ECSKW3110|AC_000091|1250851|427	Enterobacteriaceae	
+ECSKW3110|AC_000091|4553637|480	Enterobacteriaceae	ECBD_3715;
+ECSKW3110|AC_000091|4572756|426	Enterobacteriaceae	EcolC_3725;
+ECSKW3110|AC_000091|2573950|403	Enterobacteriaceae	ECs3324;SSON_2541;
+ECSKW3110|AC_000091|1202452|391	Enterobacteriaceae	JW1128;EFER_0578;
+ECSKW3110|AC_000091|1134013|472	Enterobacteriaceae	
+ECSKW3110|AC_000091|911794|452	Enterobacteriaceae	
+ECSKW3110|AC_000091|3730556|391	Enterobacteriaceae	APECO1_2738;
+ECSKW3110|AC_000091|2766662|437	Enterobacteriaceae	b2632;b2632;
+ECSKW3110|AC_000091|312368|404	Enterobacteriaceae	EcE24377A_0310;EcE24377A_0310;
+ECSKW3110|AC_000091|904150|428	Enterobacteriaceae	S0861;
+
+Functional annotations are based on the best annotated non-overlapping hits, i.e, a sequence can have more than one annotation.
+For example b2632;b2632 means that 2 non-overlapping proteins with the same function have been detected in the read.
 
 BUGS:
 =====
@@ -149,10 +204,16 @@ TO-DO:
 ------
  + Include in one dictionary the "nucl" and "prot" versions of "gi_taxid" since the resulting dictionary will occupy the same space
  + Allow real (unfiltered) LCAs.
+ + Improve the multi-thread design
+ + Add other functional databases (SEED)
+ + Translate functional IDs into functional descriptions
+ + Web server to visualize the results
+ + More tools
 
 Known problems:
 ---------------
- + When the LCA is above Superkingdom, "Bacteria" is reported as the LCA. This will be solved in the next release.
+ + In 0.2 most of the code have been rewritten. LCA algorithm should be very fast now, but multi-threading design is improvable (for example, LCA for a single sequence is so fast now, that you gain no performance by processing 1 sequence per core).
+ + I have to profile with real datasets and improve performance.
 
 CONTACT:
 ========

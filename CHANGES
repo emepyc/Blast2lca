@@ -7,3 +7,13 @@ Sunday 20-02-2011
 Monday 04-04-2011
        + Code updated to meet changes in latest GO implementation
        + Changes in README -- Update the installation procedure (note $GOROOT dependency)
+
+Thursday 01-09-2011
+       + Version 0.2
+       + Functional (KEGG support added)
+       + Improved LCA algorithm
+       + The size of gi_taxid_[nucl/prot].bin has been reduced (30% of reduction)
+       + Code in sync with latest GO version
+       + Updated documentation
+       + Source files reorganized to work with goinstall
+

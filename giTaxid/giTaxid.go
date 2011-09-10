@@ -68,7 +68,10 @@ func (r *OnFile) GiTaxid ( gi int ) ( int, os.Error ) {
 	}
 
 	taxid := int(uint32(bts[2]) | uint32(bts[1]) << 8 | uint32(bts[0]) << 16 | uint32(0) << 24)
+<<<<<<< HEAD
 //	fmt.Fprintf(os.Stderr, "-----> GI: %d -- Taxid : %d\n", gi, taxid)
+=======
+>>>>>>> e89fd5ad3651902c534e4c995e3d1f4805443d73
 	return taxid, nil
 }
 
@@ -92,7 +95,11 @@ func getLastGi (fh *os.File) ([]byte, os.Error) {
 	for {
 		line, _ , err := buf.ReadLine()
 		if err == os.EOF { 
+<<<<<<< HEAD
 			parts := bytes.Split(prevLine, []byte("\t"), 2)
+=======
+			parts := bytes.SplitN(prevLine, []byte("\t"), 2)
+>>>>>>> e89fd5ad3651902c534e4c995e3d1f4805443d73
 			return parts[0], nil
 		}
 		if err != nil {
@@ -115,6 +122,10 @@ func New (fileIn string) (OnMemory, os.Error) {
 	lastGiStr,err := getLastGi(fh)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Atoi error: %s\n", err)
+<<<<<<< HEAD
+=======
+		return nil, err
+>>>>>>> e89fd5ad3651902c534e4c995e3d1f4805443d73
 	}
 
 	lastGi, err := strconv.Atoi(string(lastGiStr))
@@ -140,7 +151,11 @@ func New (fileIn string) (OnMemory, os.Error) {
 		if err != nil {
 			return nil, err
 		}
+<<<<<<< HEAD
 		parts := bytes.Split(line, []byte("\t"), -1)
+=======
+		parts := bytes.Split(line, []byte("\t"))
+>>>>>>> e89fd5ad3651902c534e4c995e3d1f4805443d73
 		gi, err := strconv.Atoi(string(parts[0]))
 		if err != nil {
 			return nil, err

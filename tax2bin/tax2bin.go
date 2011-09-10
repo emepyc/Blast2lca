@@ -41,7 +41,11 @@ type taxonomy map[int]*Taxnode
 func init() {
 	flag.StringVar(&nodesfile, "nodes", "nodes.dmp", "nodes.dmp file of taxonomy")
 	flag.StringVar(&namesfile, "names", "names.dmp", "names.dmp file of taxonomy")
+<<<<<<< HEAD
 	flag.StringVar(&outfile,    "out",   "taxonomy.bin", "output file -- defaults to taxonomy.bin")
+=======
+	flag.StringVar(&outfile, "out", "taxonomy.bin", "output file -- defaults to taxonomy.bin")
+>>>>>>> e89fd5ad3651902c534e4c995e3d1f4805443d73
 
 	flag.BoolVar(&helpflag, "help", false, "Print usage and exits")
 	flag.Parse()
@@ -56,7 +60,11 @@ func readnames(b *bufio.Reader, namesch chan<- *tids) {
 	for {
 		line, err := b.ReadString('\n')
 		if err == os.EOF {
+<<<<<<< HEAD
 //			bch <- true
+=======
+			//			bch <- true
+>>>>>>> e89fd5ad3651902c534e4c995e3d1f4805443d73
 			close(namesch)
 			return
 		}
@@ -67,13 +75,21 @@ func readnames(b *bufio.Reader, namesch chan<- *tids) {
 		//		fmt.Println(*newName);
 		namesch <- newName
 	}
+<<<<<<< HEAD
 //	bch <- true
+=======
+	//	bch <- true
+>>>>>>> e89fd5ad3651902c534e4c995e3d1f4805443d73
 	close(namesch)
 	return
 }
 
 func parsename(l []byte) *tids {
+<<<<<<< HEAD
 	parts := bytes.Split(l, []byte(sep), -1)
+=======
+	parts := bytes.Split(l, []byte(sep))
+>>>>>>> e89fd5ad3651902c534e4c995e3d1f4805443d73
 	tid, _ := strconv.Atoi(fmt.Sprintf("%s", parts[0]))
 	newName := &tids{
 		tid,
@@ -82,7 +98,11 @@ func parsename(l []byte) *tids {
 }
 
 func parsenode(l []byte) *Taxnode {
+<<<<<<< HEAD
 	parts := bytes.Split(l, []byte(sep), 4)
+=======
+	parts := bytes.SplitN(l, []byte(sep), 4)
+>>>>>>> e89fd5ad3651902c534e4c995e3d1f4805443d73
 	tid, _ := strconv.Atoi(fmt.Sprintf("%s", parts[0]))
 	pid, _ := strconv.Atoi(fmt.Sprintf("%s", parts[1]))
 	//	fmt.Println("KKKK:",tid);
@@ -98,7 +118,11 @@ func parsenode(l []byte) *Taxnode {
 }
 
 func newTaxonomy(b *bufio.Reader) taxonomy {
+<<<<<<< HEAD
 	taxmap :=  make(map[int]*Taxnode)
+=======
+	taxmap := make(map[int]*Taxnode)
+>>>>>>> e89fd5ad3651902c534e4c995e3d1f4805443d73
 	for {
 		line, err := b.ReadString('\n')
 		if err == os.EOF {
@@ -126,30 +150,51 @@ func New(nodes, names string) taxonomy {
 	}
 	namesbuf := bufio.NewReader(io.Reader(namesf))
 
+<<<<<<< HEAD
 //	endch := make(chan bool)
+=======
+	//	endch := make(chan bool)
+>>>>>>> e89fd5ad3651902c534e4c995e3d1f4805443d73
 	namesch := make(chan *tids, 1000)
 	go readnames(namesbuf, namesch)
 
 	tax := newTaxonomy(nodesbuf)
+<<<<<<< HEAD
 //	<-endch
 
 	for {
 		n,ok := <-namesch
+=======
+	//	<-endch
+
+	for {
+		n, ok := <-namesch
+>>>>>>> e89fd5ad3651902c534e4c995e3d1f4805443d73
 		if !ok {
 			break
 		}
 		tax[n.Taxid].This.Tids = n
 	}
 
+<<<<<<< HEAD
 // 	for n := range namesch {
 // 		tax[n.Taxid].This.Tids = n
 // 	}
+=======
+	// 	for n := range namesch {
+	// 		tax[n.Taxid].This.Tids = n
+	// 	}
+>>>>>>> e89fd5ad3651902c534e4c995e3d1f4805443d73
 
 	return tax
 }
 
 // Not used in this program -- We use it only to store the new binary version of taxonomy
+<<<<<<< HEAD
 func (t taxonomy) Store (fname string) os.Error {
+=======
+func (t taxonomy) Store(fname string) os.Error {
+>>>>>>> e89fd5ad3651902c534e4c995e3d1f4805443d73
 	b := new(bytes.Buffer)
 	enc := gob.NewEncoder(b)
 	err := enc.Encode(t)
@@ -162,6 +207,7 @@ func (t taxonomy) Store (fname string) os.Error {
 	if eopen != nil {
 		return eopen
 	}
+<<<<<<< HEAD
 	_,e := fh.Write(b.Bytes())
 	if e != nil {
 		return e
@@ -171,6 +217,17 @@ func (t taxonomy) Store (fname string) os.Error {
 }
 
 func Load (fname string) (taxonomy, os.Error) {
+=======
+	_, e := fh.Write(b.Bytes())
+	if e != nil {
+		return e
+	}
+	//	fmt.Fprintf(os.Stderr, "%d bytes successfully written to file\n", n)
+	return nil
+}
+
+func Load(fname string) (taxonomy, os.Error) {
+>>>>>>> e89fd5ad3651902c534e4c995e3d1f4805443d73
 	fh, err := os.Open(fname)
 	if err != nil {
 		return nil, err
@@ -182,7 +239,11 @@ func Load (fname string) (taxonomy, os.Error) {
 		return nil, err
 	}
 	return t, nil
+<<<<<<< HEAD
 } 
+=======
+}
+>>>>>>> e89fd5ad3651902c534e4c995e3d1f4805443d73
 
 func main() {
 	fmt.Fprintf(os.Stderr, "Building the taxonomy tree ... ")
@@ -190,7 +251,11 @@ func main() {
 	newtax := New(nodesfile, namesfile)
 	s2 := time.Nanoseconds()
 	if newtax == nil {
+<<<<<<< HEAD
 		fmt.Fprintf(os.Stderr,"\n ERROR: the map is empty\n")
+=======
+		fmt.Fprintf(os.Stderr, "\n ERROR: the map is empty\n")
+>>>>>>> e89fd5ad3651902c534e4c995e3d1f4805443d73
 		os.Exit(1)
 	}
 	fmt.Fprintf(os.Stderr, "Done (%.5f)\n", (float32(s2-s1))/1e9)
@@ -204,6 +269,7 @@ func main() {
 	}
 	fmt.Fprintf(os.Stderr, "Done (%.5f)\n", (float32(s2-s1))/1e9)
 
+<<<<<<< HEAD
 // 	s1 = time.Nanoseconds()
 // 	_,err := Load("file.bin")
 // 	s2 = time.Nanoseconds()
@@ -215,3 +281,15 @@ func main() {
 
 }
 
+=======
+	// 	s1 = time.Nanoseconds()
+	// 	_,err := Load("file.bin")
+	// 	s2 = time.Nanoseconds()
+	// 	if err != nil {
+	// 		fmt.Println(err)
+	// 		os.Exit(1)
+	// 	}
+	// 	fmt.Printf("tree read from file in %.5f seconds\n", float32(s2-s1)/1e9)
+
+}
+>>>>>>> e89fd5ad3651902c534e4c995e3d1f4805443d73
