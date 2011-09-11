@@ -16,7 +16,7 @@ type Hit struct {
 	subject Header
 	gi int
 	qfrom, qto, sfrom, sto int
-	bitsc int // float??
+	bitsc float32
 }
 type QueryRes struct {
 	Query Header
@@ -24,32 +24,38 @@ type QueryRes struct {
 	Hits []*Hit
 }
 
-func ProcFile (iblast *bufio.Reader) {
+func ProcFile (iblast *bufio.Reader) chan *QueryRes {
 	lines := 0
 	recs := 0
 	t1 := time.Nanoseconds()
-	readQuery := make([]byte, 30)
+	var readQuery []byte
 	readBlock := make([][]byte, 100) // TODO: set length to blim
 	procBlocChan := make(chan *QueryRes, 4)
 	for {
 		line, ierr := iblast.ReadBytes('\n')
+		fmt.Fprintf(os.Stderr, "line:\n%s\n", line)
 		if ierr == os.EOF {
-			fmt.Fprintf(os.Stdout, "Query! %s\n", readQuery)
+			fmt.Fprintf(os.Stdout, "[EOF]:Query! %s\n", readQuery)
 			go procBloc(readQuery, readBlock, procBlocChan)
 			break
 		}
+		line = line[1:]
 		lines++
 		currQuery,err := Line(line).extractQuery()
 		if err != nil {
 			log.Fatal(err)  // TODO: Convert it to non-fatal
 		}
+		fmt.Fprintf(os.Stderr, "readQuery is not nil, it is: %v\n", readQuery)
 		if readQuery == nil {
+			readQuery = make([]byte, 30)
 			readQuery = currQuery
-			continue
 		}
+		fmt.Fprintf(os.Stderr, "readQuery: %s\n", readQuery)
+		fmt.Fprintf(os.Stderr, "currQuery: %s\n", currQuery)
 		if ! bytes.Equal(readQuery,currQuery) {
+			fmt.Fprintf(os.Stderr, "Not Equal!\n")
 			recs++
-//			_ = procBloc(readBlock)
+			go procBloc(readQuery, readBlock, procBlocChan)
 			fmt.Fprintf(os.Stdout, "Query! %s\n", readQuery)
 			readBlock = make([][]byte, 100)
 			readQuery = currQuery
@@ -63,6 +69,7 @@ func ProcFile (iblast *bufio.Reader) {
 	linesXsec := int(float32(lines) / elapse)
 	fmt.Fprintf(os.Stderr, "%d recs (%d lines) in %.3f secs (%d lines per sec)\n",
 		recs, lines, elapse, linesXsec)
+	return procBlocChan
 	
 }
 
@@ -79,7 +86,7 @@ func parseLine (line Line) *Hit {
 	qto  , _ := strconv.Atoi(string(parts[7]))
 	sfrom, _ := strconv.Atoi(string(parts[8]))
 	sto  , _ := strconv.Atoi(string(parts[9]))
-	bitsc, _ := strconv.Atof32(string(parts[10]))
+	bitsc, _ := strconv.Atof32(string(bitscStr))
 	if qfrom > qto {
 		qfrom, qto = qto, qfrom
 	}
@@ -97,7 +104,6 @@ func parseLine (line Line) *Hit {
         sfrom: sfrom,
         sto: sto,
         bitsc: bitsc }
-	}
 }
 
 func (b Header) extractGI () (int, os.Error) {
@@ -131,16 +137,19 @@ func (l Line) extractQuery () ([]byte, os.Error) {
 	return l[:pos], nil
 }
 
-func ProcBloc (query []byte, block [][]byte, sendChan chan<- *QueryRes ) {
+func procBloc (query []byte, block [][]byte, sendChan chan<- *QueryRes ) {
 	newQuery := &QueryRes{}
 	newQuery.Best = &Hit{bitsc : 0}
 	newQuery.Query = make([]byte, len(query)) // IS THIS ALLOCATION NEEDED??
 	copy(newQuery.Query, query)
 	for _,hitline := range block {
+		fmt.Fprintf(os.Stderr, "HITLINE:%v\n", hitline)
 		nextHit := parseLine(Line(hitline));
 		
-		if nextHit.bitsc > newQuery.Best {
+		if nextHit.bitsc > newQuery.Best.bitsc {
 			newQuery.Best = nextHit
 		}
+		newQuery.Hits = append(newQuery.Hits, nextHit)
 	}
+	sendChan <- newQuery
 }
