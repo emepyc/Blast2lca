@@ -1,179 +1,106 @@
+//Package blastm8 allows reading and parsing of m8-formatted blast files
 package blastm8
-
-
-/*
-The blastm8 package reads a tab-formatted blast output and passes each record to a channel
-*/
 
 import (
 	"fmt"
-	"os"
+	"io"
 	"bufio"
-	"sort" // For transform -- Schwartzian Transformation
+	"sort"
 	"bytes"
 	"strconv"
-	"regexp" //HINT: To extract GIs
-<<<<<<< HEAD
-=======
-//	"getgi"
->>>>>>> e89fd5ad3651902c534e4c995e3d1f4805443d73
+	"regexp" //HINT: To extract GIs -- TODO: Profile the 2 alternatives given below
+	"log"
+	"errors"
+//	"os"
 )
 
-//Global parameters
-const (
-	lcalim = 0.1  // TODO: All these should be parameterized and imported from main
-	blim   = 1000 // ""
-	scLim  = 0.9  // ""
-	ovl    = 0.8  // 80 % of the shortest sequence
-)
+//giRx is a regexp for GI extraction
+var giRx *regexp.Regexp = regexp.MustCompile(`gi\|([0-9]+)\|`) // HINT: Compile globally
 
-//Global vars
-var (
-	giRx *regexp.Regexp = regexp.MustCompile(`gi\|([0-9]+)\|`) // HINT: Compile globally
-)
-
-//Query or Subject -- typical headers of nr/nt as they appear in blast-m8 results
+//Header represents a Query or Subject -- typical headers of nr/nt as they appear in blast-m8 results
 type Header []byte
 
-//Information of a single Blast hit
+//Hit gives single Blast hit information
 type Hit struct { // Was Blast
-	subject                Header
-	gi                     int // We may operate in GI space
-	qfrom, qto, sfrom, sto int
-	eval, bitsc            float32
+	gi               int // We may operate in GI space
+	bitsc            float64
 }
 
-<<<<<<< HEAD
-=======
-type BlastRec struct {
-	Header
-	Hit
-}
-
->>>>>>> e89fd5ad3651902c534e4c995e3d1f4805443d73
-type sortByPos Hits
-type sortByBitsc Hits
-
-type BySubj struct {
-	Recs []*Hit
-	Best *Hit // ??
-}
-
-//Information about the hits of a query
-type QueryRes struct { // Was Rep2LCA
-	Query  Header
-	Best   *Hit
-	Hits   []*Hit
-	BySubj []*BySubj
-<<<<<<< HEAD
-=======
-	ByPos  []*Hit
->>>>>>> e89fd5ad3651902c534e4c995e3d1f4805443d73
-}
-
-//A collection of hits
+//Hits represent a  collection of hits
 type Hits []*Hit
 
-//Stringify a hit
-func (h Hit) String() string {
-	return fmt.Sprintf("%s\t%d\t%d\t%.2f", h.subject, h.qfrom, h.qto, h.bitsc)
+//BlastBlock represents a block of Blast hits
+type BlastBlock struct {
+	header Header
+	block  []byte
 }
 
-//Get gi
-func (h *Hit) GetGI() int {
+//QueryRes has the needed information about the hits of a query
+type QueryRes struct {
+	Query  Header
+	Hits   Hits
+}
+
+//findIndex returns the index in the Hits slice with the last significant Hit.
+func (hits Hits) findIndex (bsLim float64) int {
+	for i,hit := range hits {
+		if hit.bitsc < bsLim {
+			return i
+		}
+	}
+	return len(hits)
+}
+
+//String stringify a BlastBlock
+func (b BlastBlock) String() string {
+	s := fmt.Sprintf("HEADER: %s\n", b.header)
+	s += fmt.Sprintf("BLOCK:\n%s\n", b.block)
+	return s
+}
+
+//String stringify a hit
+func (h Hit) String() string {
+	return fmt.Sprintf("GI:%d\t%.2f", h.gi, h.bitsc)
+}
+
+//GI returns the GI of the corresponding Hit
+func (h *Hit) GI() int {
 	return h.gi
 }
 
-//Get bitsc
-func (h *Hit) GetBitsc() float32 {
+//Bitsc returns the bit score of the corresponding Hit
+func (h *Hit) Bitsc() float64 {
 	return h.bitsc
 }
 
-//Stringify a query result
+//String Stringifies a query result
 func (t QueryRes) String() string {
-	s := fmt.Sprintf("%s\nBEST:\n%v\n", t.Query, t.Best)
+	s := fmt.Sprintf("%s\n", t.Query)
 	s += fmt.Sprintf("HITS:\n")
 	for _, v := range t.Hits {
 		s += fmt.Sprintf("\t%v\n", v)
 	}
-	s += fmt.Sprintf("BY_SUBJ\n")
-	for i, v := range t.BySubj {
-		s += fmt.Sprintf("++++ %d ++++\n", i)
-		s += fmt.Sprintf("%v\n", v)
-	}
 	return s
 }
 
-//Stringify a BySubj
-func (b *BySubj) String() string {
-	s := fmt.Sprintf("BEST:\n")
-	s += fmt.Sprintf("\t%v\n", b.Best)
-	s += fmt.Sprintf("ALL:\n")
-	for _, v := range b.Recs {
-		s += fmt.Sprintf("\t%v\n", v)
-	}
-	return s
-}
-
-// Sort interface for hits
-func (h sortByPos) Len() int {
+// Sort interface for Hits by bitscore
+func (h Hits) Len() int {
 	return len(h)
 }
 
-func (h sortByPos) Less(i, j int) bool { // fields qFrom and qTo are already sorted
-	if h[i].qfrom == h[j].qfrom {
-		return h[i].qto < h[j].qto
-	}
-	return h[i].qfrom < h[j].qfrom
-}
-
-func (h sortByPos) Swap(i, j int) {
-	h[i], h[j] = h[j], h[i]
-}
-// Sort interface -- End
-
-// Sort interface by subject
-func (h sortByBitsc) Len() int {
-	return len(h)
-}
-
-func (h sortByBitsc) Less(i, j int) bool {
+// Sort interface for Hits by bitscore
+func (h Hits) Less(i, j int) bool {
 	return h[i].bitsc > h[j].bitsc
 }
 
-func (h sortByBitsc) Swap(i, j int) {
+// Sort interface for Hits by bitscore
+func (h Hits) Swap(i, j int) {
 	h[i], h[j] = h[j], h[i]
 }
 
-//Extract the GI of a Subject/Query
-<<<<<<< HEAD
-func (b Header) extractGI() (gi int) {
-	gis := giRx.FindSubmatch(b)
-	if gis == nil || len(gis) == 0 {
-		fmt.Fprintf(os.Stderr, "No GI found in Header: %s => %s\n", b)
-		gi = -1
-		return
-	}
-	if len(gis) > 2 {
-		fmt.Fprintf(os.Stderr, "More than one GI found in blast record. Only the first will be used\n")
-	}
-	gi, converr := (strconv.Atoi(string(gis[1])))
-	if converr != nil {
-		fmt.Fprintf(os.Stderr, "Error converting %s to number (GI)\n", gis[1])
-		os.Exit(1)
-	}
-	return
-}
 
-func (queryRes *QueryRes) fillBySubj() {
-	sort.Sort((sortByPos)(queryRes.Hits)) // Aren't they already sorted?
-	queryRes.BySubj = make([]*BySubj, 0, 10)
-	currGroup := &BySubj{ Recs : make([]*Hit, 0, 10), Best : &Hit{} }
-	currGroup.Best = queryRes.Hits[0]
-	var minTo int = 0
-	var maxFrom int = 0
-	for _, nextHit := range queryRes.Hits {
-=======
+// 2 OPTIONS HERE! SEE WHAT IS FASTER / MORE CONSISTENT
+//Extract the GI of a Subject/Query
 // func (b Header) extractGI() (gi int) {
 // 	gis := giRx.FindSubmatch(b)
 // 	if gis == nil || len(gis) == 0 {
@@ -192,7 +119,7 @@ func (queryRes *QueryRes) fillBySubj() {
 // 	return
 // }
 
-func (b Header) extractGI () (int, os.Error) {
+func (b Header) extractGI () (int, error) {
 	gib := make([]byte, 0, 10)
 	for i,v := range b {
 		if v == 'g' && b[i+1] == 'i' && b[i+2] == '|' {
@@ -200,294 +127,100 @@ func (b Header) extractGI () (int, os.Error) {
 				if b[j] == '|' {
 					gi, err := strconv.Atoi(string(gib))
 //					gi := atoi(gib)
-					if err != nil {
-						return -1, err
-					}
+ 					if err != nil {
+ 						return -1, err
+ 					}
 					return gi, nil
 				}
 				gib = append(gib, b[j])
 			}
-			nerr := os.NewError(fmt.Sprintf("No | found after GI in %s", b))
+			nerr := errors.New(fmt.Sprintf("No | found after GI in %s", b))
 			return -1, nerr
 		}
 	}
-	lerr := os.NewError(fmt.Sprintf("No gi| found in: %s", b))
+	lerr := errors.New(fmt.Sprintf("No gi| found in: %s", b))
 	return -1, lerr
 }
 
-func (queryRes *QueryRes) fillBySubj() {
-	queryRes.ByPos = make([]*Hit, len(queryRes.Hits))
-	copy(queryRes.ByPos, queryRes.Hits) // Assume Hits are sorted by BS, is this really happening?
-	sort.Sort((sortByPos)(queryRes.ByPos))
-	queryRes.BySubj = make([]*BySubj, 0, 10)
-	currGroup := &BySubj{ Recs : make([]*Hit, 0, 10), Best : &Hit{} }
-	currGroup.Best = queryRes.ByPos[0]
-	var minTo int = 0
-	var maxFrom int = 0
-	for _, nextHit := range queryRes.ByPos {
->>>>>>> e89fd5ad3651902c534e4c995e3d1f4805443d73
-		nextFrom, nextTo := nextHit.qfrom, nextHit.qto
-		bestFrom, bestTo := currGroup.Best.qfrom, currGroup.Best.qto
-		if nextTo < bestTo {
-			minTo = nextTo
-		} else {
-			minTo = bestTo
-		}
-		if nextFrom > bestFrom {
-			maxFrom = nextFrom
-		} else {
-			maxFrom = bestFrom
-		}
-		lenBest := bestTo - bestFrom //HINT: Both are already sorted (To<From)
-		lenNext := nextTo - nextFrom
-
-		percBest := float32(minTo - maxFrom) / float32(lenBest)
-		percNext := float32(minTo - maxFrom) / float32(lenNext)
-
-		if percBest < ovl && percNext < ovl {
-			sort.Sort((sortByBitsc)(currGroup.Recs))  // sorted by bitsc descending order
-			queryRes.BySubj = append(queryRes.BySubj, currGroup)
-			currGroup = &BySubj{Recs : make([]*Hit, 0, 10), Best : &Hit{}}
-			currGroup.Recs = append(currGroup.Recs, nextHit)
-			currGroup.Best = nextHit
-			continue
-		}
-		currGroup.Recs = append(currGroup.Recs, nextHit)
-		if currGroup.Best.bitsc < nextHit.bitsc {
-			currGroup.Best = nextHit
-		}
-	}
-	queryRes.BySubj = append(queryRes.BySubj, currGroup)
-}
-
-
-//Read the query results from a blast m8-formatted file and pass the results
-//to a channel
-//func Procfile(iblast *bufio.Reader, queryChan chan<- *QueryRes, done chan<- bool, byFunc bool) {
-func Procfile(iblast *bufio.Reader, queryChan chan<- *QueryRes, byFunc bool) {
-<<<<<<< HEAD
-=======
-	lineChan := make(chan BlastRec, 1000)
->>>>>>> e89fd5ad3651902c534e4c995e3d1f4805443d73
-	hitCollect := new(QueryRes)
-	hitCollect.Best = &Hit{bitsc : 0}
-	var nextHit *Hit
+//ProcFile reads the query results from a blast m8-formatted file and passes the results
+//to the queryChan channel. What is passed is the raw block of lines corresponding to a single query in the blast file.
+func Procfile(iblast *bufio.Reader, queryChan chan<- *BlastBlock) {
+	subjCollect := bytes.NewBuffer(make([]byte, 0, 100000))
 	var query []byte
-<<<<<<< HEAD
-LOOP:
-	for i := 0; ; i++ {
-		line, _, ierr := iblast.ReadLine()
-//		if len(line) == 0 {   // HINT: For blank lines
-//			continue
-//		}
-=======
-	for {
-		line, ierr := iblast.ReadBytes('\n')
->>>>>>> e89fd5ad3651902c534e4c995e3d1f4805443d73
-		if ierr == os.EOF {
-			if byFunc {
-				hitCollect.fillBySubj()
-			}
-			sort.Sort((sortByBitsc)(hitCollect.Hits))
-			queryChan <- hitCollect
+	for ;; {
+		line, _, ierr := iblast.ReadLine() // TODO: Check isIndex
+		if ierr == io.EOF {
+			block := subjCollect.Bytes()
+			queryChan <- &BlastBlock{ header : Header(query), block : block[:len(block)-1] }
 			close(queryChan)
-<<<<<<< HEAD
 			return
 		}
-		if i >= blim { // TODO: a better way to avoid extra looping?? -- It is avoided, right?
-			continue LOOP
+		currQuery, qerr := extractQuery(line)
+		if qerr != nil {
+			log.Printf("WARNING: I can't extract the query field from this line: %s\n%s\n", line, qerr)
+			continue // offending line is not passed
 		}
-		query, nextHit = parseblast(line)
-//		fmt.Fprintf(os.Stderr, "Q:%s\n", query)
-		if hitCollect.Query == nil {
-			hitCollect.Hits = make([]*Hit, 0, blim)
-			hitCollect.Query = make([]byte, len(query))
-			copy(hitCollect.Query, query)
-//			fmt.Fprintf (os.Stderr, "Query => %s\n", hitCollect.Query)
+		if (query == nil) {
+			query = currQuery
 		}
-		if ! bytes.Equal(hitCollect.Query, query) {
-			if byFunc {
-				hitCollect.fillBySubj()
+		if (bytes.Equal(currQuery, query)) {
+			_, err := subjCollect.Write(append(line, '\n'))
+			if err != nil {
+				log.Println("WARNING: Error collecting line from blast:\nLINE:\n%s\nERROR: %s\n", line, err)
 			}
-//			fmt.Fprintf (os.Stderr, "Query => %s\n", hitCollect.Query)
-			queryChan <- hitCollect
-			hitCollect = new(QueryRes)
-			hitCollect.Best = nextHit
-			hitCollect.Query = make([]byte, len(query))
-			copy (hitCollect.Query, query)
-			hitCollect.Hits = make([]*Hit, 0, blim)
-			i = 0
+		} else {
+			block := subjCollect.Bytes()
+			passQuery := make([]byte, len(query))
+			copy (passQuery, query)
+			queryChan <- &BlastBlock{ header: Header(passQuery), block : block[:len(block)-1] }
+			subjCollect = bytes.NewBuffer(make([]byte, 0, 100000))
+			subjCollect.Write(append(line, '\n'))
+			query = currQuery
 		}
-		if hitCollect.Best.bitsc < nextHit.bitsc {
-			hitCollect.Best = nextHit
-		}
-		hitCollect.Hits = append(hitCollect.Hits, nextHit)
-=======
-			break
-		}
-		line = line[0:len(line)-1]
-		go parseblast(line, lineChan)
-		select {
-		case bline := <-lineChan:
-			nextHit = &bline.Hit
-			query = bline.Header
-//			fmt.Fprintf(os.Stderr, "++%v\n", query)
-			if hitCollect.Query == nil {
-				hitCollect.Hits = make([]*Hit, 0, blim)
-				hitCollect.Query = make([]byte, len(query))
-				copy(hitCollect.Query, query)
-			}
-			if ! bytes.Equal(hitCollect.Query, bline.Header) {
-				if byFunc {
-					hitCollect.fillBySubj()
-				}
-				sort.Sort((sortByBitsc)(hitCollect.Hits))
-				queryChan <- hitCollect
-				hitCollect = new(QueryRes)
-				hitCollect.Best = nextHit
-				hitCollect.Query = make([]byte, len(query))
-				copy(hitCollect.Query, query)
-				hitCollect.Hits = make([]*Hit, 0, blim)
-			}
-			if hitCollect.Best.bitsc < nextHit.bitsc {
-				hitCollect.Best = nextHit
-			}
-			hitCollect.Hits = append(hitCollect.Hits, nextHit)
-		default : continue
-		}
->>>>>>> e89fd5ad3651902c534e4c995e3d1f4805443d73
 	}
-	return
 }
 
-<<<<<<< HEAD
-//Parses a single blast hit
-func parseblast(line []byte) ([]byte, *Hit) {
-	var newB *Hit
-
-	parts := bytes.Split(line, []byte("\t"), -1) // For recent releases, n should be < 0
-=======
-// LOOP:
-// 	for i := 0; ; i++ {
-// 		line, ierr := iblast.ReadBytes('\n')
-// 		if ierr == os.EOF {
-// 			if byFunc {
-// 				hitCollect.fillBySubj()
-// 			}
-// 			sort.Sort((sortByBitsc)(hitCollect.Hits))
-// 			queryChan <- hitCollect
-// 			close(queryChan)
-// 			return
-// 		}
-// 		line = line[0:len(line)-1]
-// 		go parseblast(line, lineChan)
-// //		query, nextHit = parseblast(line)
-// 		if hitCollect.Query == nil {
-// 			hitCollect.Hits = make([]*Hit, 0, blim)
-// 			hitCollect.Query = make([]byte, len(query))
-// 			copy(hitCollect.Query, query)
-// 		}
-// 		if ! bytes.Equal(hitCollect.Query, query) {
-// 			if byFunc {
-// 				hitCollect.fillBySubj()
-// 			}
-// 			sort.Sort((sortByBitsc)(hitCollect.Hits))
-// 			queryChan <- hitCollect
-// 			hitCollect = new(QueryRes)
-// 			hitCollect.Best = nextHit
-// 			hitCollect.Query = make([]byte, len(query))
-// 			copy (hitCollect.Query, query)
-// 			hitCollect.Hits = make([]*Hit, 0, blim)
-// 			i = 0
-// 		}
-// 		if i >= blim {
-// 			continue LOOP
-// 		}
-// 		if hitCollect.Best.bitsc < nextHit.bitsc {
-// 			hitCollect.Best = nextHit
-// 		}
-// 		hitCollect.Hits = append(hitCollect.Hits, nextHit)
-// 	}
-// 	return
-// }
-
-//Parses a single blast hit
-func parseblast(line []byte, lineChan chan BlastRec) {
-	var newB *Hit
-	parts := bytes.Split(line, []byte("\t"))
-
->>>>>>> e89fd5ad3651902c534e4c995e3d1f4805443d73
-	var bitscStr []byte
-	if parts[11][0] == 32 {
-		bitscStr = parts[11][1:]
-	} else {
-		bitscStr = parts[11]
+// extractQuery extracts and returns the query field of a line of m8-formatted blast hit.
+func extractQuery (line []byte) ([]byte, error) {
+	pos := bytes.IndexByte(line, '\t')
+	if pos < 0 {
+		return nil, errors.New("Line is not tab separated. This line can't be processed")
 	}
-
-	// TODO: we don't give strand information, should we??
-	qfrom, _ := strconv.Atoi(string(parts[6]))
-<<<<<<< HEAD
-	qto, _ := strconv.Atoi(string(parts[7]))   // Weird ... it was 8!!??
-	sfrom, _ := strconv.Atoi(string(parts[8])) // Weird ... it was 7!!??
-	sto, _ := strconv.Atoi(string(parts[9]))
-	eval, _ := strconv.Atof32(string(parts[10]))  // Used? If not... remove
-	bitsc, bse := strconv.Atof32(string(bitscStr))
-	qfromto := []int{qfrom, qto}
-	sort.SortInts(qfromto)
-	qfrom, qto = qfromto[0], qfromto[1] // qfrom and qto are now sorted
-	sfromto := []int{sfrom, sto}
-	sort.SortInts(sfromto)
-=======
-//	qfrom := atoi(parts[6])
-	qto, _ := strconv.Atoi(string(parts[7]))   // Weird ... it was 8!!??
-//	qto := atoi(parts[7])
-	sfrom, _ := strconv.Atoi(string(parts[8])) // Weird ... it was 7!!??
-//	sfrom := atoi(parts[8])
-	sto, _ := strconv.Atoi(string(parts[9]))
-//	sto := atoi(parts[9])
-	eval, _ := strconv.Atof32(string(parts[10]))  // Used? If not... remove
-	bitsc, bse := strconv.Atof32(string(bitscStr))
-	qfromto := []int{qfrom, qto}
-	sort.Ints(qfromto)
-	qfrom, qto = qfromto[0], qfromto[1] // qfrom and qto are now sorted
-	sfromto := []int{sfrom, sto}
-	sort.Ints(sfromto)
-	sfrom, sto = sfromto[0], sfromto[1] // sfrom and sto are now sorted
-	if bse != nil {
-		fmt.Fprintf(os.Stderr, "Error parsing bit score: %s as integer --- Aborting\n", parts[11])
-		os.Exit(1)
+	if pos == 0 {
+		return nil, errors.New("Line with a blank query field (starts with a <tab> character")
 	}
+	return line[0:pos], nil
+}
 
-	query := parts[0]
-//	gi := Header(parts[1]).extractGI()
-	gi, gierr := Header(parts[1]).extractGI()
-	if gierr != nil {
-		fmt.Fprintf(os.Stderr, "%s", gierr)
-		os.Exit(1)
+// ParseRecord parses the lines for a query (blast m8-formatted) and write the information in a QueryRes
+// Only the lines with bit score greater than the best score * scLim are processed
+func ParseRecord (bb BlastBlock, scLim float64) *QueryRes {
+	qRes := &QueryRes{}
+	qRes.Query = bb.header
+	bestBs := float64(0)
+	recs := bytes.Split(bb.block, []byte{'\n'})
+	for _, blastLine := range recs {
+		nextHit, err := parseblast(blastLine)
+		if err != nil {
+			log.Printf("WARNING: Ignoring blast line: %s\n", blastLine)
+			continue
+		}
+		qRes.Hits = append(qRes.Hits, nextHit)
+		if bestBs < nextHit.bitsc {
+			bestBs = nextHit.bitsc
+		}
 	}
-	newB = &Hit{
-//		subject: parts[1],
-//	gi:      Header(parts[1]).extractGI(),
-	gi: gi,
-	qfrom:   qfrom,
-	qto:     qto,
-	sfrom:   sfrom,
-	sto:     sto,
-	eval:    eval,
-	bitsc:   bitsc}
-	newB.subject = make([]byte, len(parts[1]))
-	copy(newB.subject, parts[1])
-//	newB.subject = parts[1] ?
-	lineChan<-BlastRec{query, *newB}
-//	fmt.Fprintf(os.Stderr, "Here\nLINE:%s\nquery: %s\nHit: %v\n\n", line, query, *newB)
-	return
-//	return query, newB
+	bsLim := bestBs * scLim
+	sort.Sort(qRes.Hits)
+	index := qRes.Hits.findIndex(bsLim)
+	qRes.Hits = qRes.Hits[:index]
+	return qRes
 }
 
 
-func parseblast2(line []byte) ([]byte, *Hit) {
+func parseblast(line []byte) (*Hit, error) {
 	var newB *Hit
-
+	
 	parts := bytes.Split(line, []byte("\t"))
 //	parts := getFields(line)
 	var bitscStr []byte
@@ -497,61 +230,18 @@ func parseblast2(line []byte) ([]byte, *Hit) {
 		bitscStr = parts[11]
 	}
 
-	// TODO: we don't give strand information, should we??
-//	qfrom, _ := strconv.Atoi(string(parts[6]))
-	qfrom := atoi(parts[6])
-//	qto, _ := strconv.Atoi(string(parts[7]))   // Weird ... it was 8!!??
-	qto := atoi(parts[7])
-//	sfrom, _ := strconv.Atoi(string(parts[8])) // Weird ... it was 7!!??
-	sfrom := atoi(parts[8])
-//	sto, _ := strconv.Atoi(string(parts[9]))
-	sto := atoi(parts[9])
-	eval, _ := strconv.Atof32(string(parts[10]))  // Used? If not... remove
-	bitsc, bse := strconv.Atof32(string(bitscStr))
-	qfromto := []int{qfrom, qto}
-	sort.Ints(qfromto)
-	qfrom, qto = qfromto[0], qfromto[1] // qfrom and qto are now sorted
-	sfromto := []int{sfrom, sto}
-	sort.Ints(sfromto)
->>>>>>> e89fd5ad3651902c534e4c995e3d1f4805443d73
-	sfrom, sto = sfromto[0], sfromto[1] // sfrom and sto are now sorted
+	bitsc, bse := strconv.ParseFloat(string(bitscStr), 64)
 	if bse != nil {
-		fmt.Fprintf(os.Stderr, "Error parsing bit score: %s as integer --- Aborting\n", parts[11])
-		os.Exit(1)
+		return nil, errors.New(fmt.Sprintf("Error parsing bit score %s as integer: %s\n", parts[11], bse))
 	}
-
-	query := parts[0]
-<<<<<<< HEAD
-	newB = &Hit{
-//		subject: parts[1],
-	gi:      Header(parts[1]).extractGI(),
-=======
-//	gi := Header(parts[1]).extractGI()
 	gi, gierr := Header(parts[1]).extractGI()
 	if gierr != nil {
-		fmt.Fprintf(os.Stderr, "%s", gierr)
-		os.Exit(1)
+		return nil, errors.New(fmt.Sprintf("Error extracting GI from %s: %s", parts[1], gierr))
 	}
 	newB = &Hit{
-//		subject: parts[1],
-//	gi:      Header(parts[1]).extractGI(),
 	gi: gi,
->>>>>>> e89fd5ad3651902c534e4c995e3d1f4805443d73
-	qfrom:   qfrom,
-	qto:     qto,
-	sfrom:   sfrom,
-	sto:     sto,
-	bitsc:   bitsc,
-	eval:    eval}
-	newB.subject = make([]byte, len(parts[1]))
-	copy(newB.subject, parts[1])
-<<<<<<< HEAD
-	return query, newB
-}
-
-=======
-//	newB.subject = parts[1] ?
-	return query, newB
+	bitsc:   bitsc}
+	return newB, nil
 }
 
 func getFields (line []byte) [][]byte {
@@ -573,6 +263,8 @@ func getFields (line []byte) [][]byte {
 	return (fields)
 }
 
+//To profile a custom implementation of atoi (-- atoi is one of the most expensive operations in the program
+//This may have now less impact, since the conversions have been moved to parallelized parts of the program
 func atoi (dbytes []byte) int {
 	i := 0
 	is_negative := false
@@ -591,4 +283,3 @@ func atoi (dbytes []byte) int {
 	}
 	return -i
 }
->>>>>>> e89fd5ad3651902c534e4c995e3d1f4805443d73

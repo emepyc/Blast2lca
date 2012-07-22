@@ -1,9 +1,9 @@
+//blast2lca calculates the lca from blast results tabular (-m8 format)
 package main
 
 import (
 	"Blast2lca/blastm8"
 	"Blast2lca/taxonomy"
-	"Blast2lca/kegg"
 	"fmt"
 	"os"
 	"bufio"
@@ -12,45 +12,27 @@ import (
 	"flag"
 	"sync"
 	"bytes"
-<<<<<<< HEAD
-)
-
-const VERSION = 0.1
-
-const (
-	lcalim      = 0.1
-	blim        = 1000
-=======
 	"time"
 	"runtime/pprof"
 	"log"
 )
 
-const VERSION = 0.2
+const VERSION = 0.3
 
 const (
-	lcalim       = 0.1
-	blim         = 1000
->>>>>>> e89fd5ad3651902c534e4c995e3d1f4805443d73
-	bscLimFactor = 0.9
+	DEFAULT_BLAST_BUFFER_SIZE = 200*1024*1024     // Default size for blast reader is 200Mb. TODO -- Try other sizes and profile
 )
 
 var (
-<<<<<<< HEAD
-	cpuflag int
-	dictflag, nodesflag, namesflag, blastfile, taxlevel, gi2kegg, bintaxflag, binkegg string
-	savememflag, verflag, helpflag, keggflag, taxIsBin, keggIsBin bool // HINT: keggflag is not set by the user, will be true if gi2kegg and kegg2pw are defined / The same with taxIsBin
-	printfLock sync.Mutex
-=======
-	cpuprofile, memprofile string
-	cpuflag                                                                           int
-	dictflag, nodesflag, namesflag, blastfile, taxlevel, gi2kegg, binkegg, bintaxflag string
-	savememflag, verflag, helpflag, keggflag, taxIsBin, keggIsBin                     bool // HINT: keggflag is not set by the user, will be true if gi2kegg and kegg2pw are defined / The same with taxIsBin
-	printfLock                                                                        sync.Mutex
->>>>>>> e89fd5ad3651902c534e4c995e3d1f4805443d73
+	cpuprofile, memprofile                                string
+	procsflag                                             int
+	dictflag, nodesflag, namesflag, blastfile, taxlevel   string
+	savememflag, verflag, helpflag, order                 bool
+	bscLimFactor                                          float64
+	printfLock                                            sync.Mutex // TODO: Try to avoid this mutex -- Print from a channel -- Make it optionally ordered
 )
 
-// HINT : Use this function for sensible output! it is threadsafe
+// printf performs threadsafe prints to os.Stdout
 func printf(format string, args ...interface{}) {
 	printfLock.Lock()
 	fmt.Printf(format, args...)
@@ -58,72 +40,21 @@ func printf(format string, args ...interface{}) {
 }
 
 func init() {
-	flag.IntVar(&cpuflag, "ncpus", 4, "Number of cpus for multithreading [optional]")
+	flag.IntVar(&procsflag, "nprocs", 4, "Number of cpus for multithreading [optional]")
 	flag.StringVar(&nodesflag, "nodes", "nodes.dmp", "nodes.dmp file of taxonomy")
 	flag.StringVar(&namesflag, "names", "names.dmp", "names.dmp file of taxonomy")
-	flag.StringVar(&bintaxflag, "bintax", "", "taxonomy in binary format (from tax2bin) [optional]")
-	flag.StringVar(&dictflag, "dict", "", "dict file of taxonomy")
-	flag.StringVar(&taxlevel, "levels", "family", "Desired taxonomical levels")
-	flag.StringVar(&gi2kegg, "gi2kegg", "", "genes_ncbi-gi.list file from kegg [optional]")
-<<<<<<< HEAD
-//	flag.StringVar(&kegg2pw, "kegg2pw", "", "genes_pathway.list file from kegg [optional]")  // For now, we leave out pathways... can be recovered later
-=======
-	//	flag.StringVar(&kegg2pw, "kegg2pw", "", "genes_pathway.list file from kegg [optional]")  // For now, we leave out pathways... can be recovered later
->>>>>>> e89fd5ad3651902c534e4c995e3d1f4805443d73
-	flag.StringVar(&binkegg, "binkegg", "", "kegg in binary format (from kegg2bin) [optional]")
-	flag.BoolVar(&savememflag, "savemem", false, "save memory by keeping files in disk [optional]")
+	flag.StringVar(&dictflag, "dict", "", "Dict file of taxonomy")
+	flag.StringVar(&taxlevel, "levels", "", "Desired LCA taxonomical levels [optional]")
+	flag.BoolVar(&savememflag, "savemem", false, "Save memory by keeping the gi2taxid mapping file in disk [optional]")
 	flag.BoolVar(&verflag, "version", false, "Print VERSION and exits")
 	flag.BoolVar(&helpflag, "help", false, "Print USAGE and exits")
-<<<<<<< HEAD
+	flag.StringVar(&cpuprofile, "cpuprof", "", "Write cpu profile to file")
+	flag.StringVar(&memprofile, "memprof", "", "Write mem profile to file")
+	flag.Float64Var(&bscLimFactor, "bsfactor", 0.9, "Limit factor for bit score significance")
+	flag.BoolVar(&order, "order", false, "Keep the sequences output in the same order as in the input blast file")
 	flag.Parse()
-//	if (kegg2gi != "" && kegg2pw != "") { // TODO: Treat kegg2gi and kegg2pw independently?
-=======
-	flag.StringVar(&cpuprofile, "cpuprof", "", "write cpu profile to file")
-	flag.StringVar(&memprofile, "memprof", "", "write mem profile to file")
-	flag.Parse()
-	//	if (kegg2gi != "" && kegg2pw != "") { // TODO: Treat kegg2gi and kegg2pw independently?
->>>>>>> e89fd5ad3651902c534e4c995e3d1f4805443d73
-	if gi2kegg != "" {
-		keggflag = true
-	} else {
-		keggflag = false
-	}
-<<<<<<< HEAD
-//	if (kegg2gi != "" && kegg2pw == "") || (kegg2gi == "" && kegg2pw != "") {
-//		fmt.Fprintf(os.Stderr, "If KEGG analysis is required, both genes_ncbi-gi.list and genes_pathway.list files are required. Only one provided\n")
-//		os.Exit(1)
-//	}
-=======
-	//	if (kegg2gi != "" && kegg2pw == "") || (kegg2gi == "" && kegg2pw != "") {
-	//		fmt.Fprintf(os.Stderr, "If KEGG analysis is required, both genes_ncbi-gi.list and genes_pathway.list files are required. Only one provided\n")
-	//		os.Exit(1)
-	//	}
->>>>>>> e89fd5ad3651902c534e4c995e3d1f4805443d73
-	if keggflag && savememflag && binkegg == "" {
-		fmt.Fprintf(os.Stderr, "In savemem mode you need to specify the kegg binary file. See the docs for details\n")
-		os.Exit(1)
-	}
-<<<<<<< HEAD
-	if (binkegg != "") {
-=======
-	if binkegg != "" {
->>>>>>> e89fd5ad3651902c534e4c995e3d1f4805443d73
-		fmt.Fprintf(os.Stderr, "Binary kegg file %s will be used for kegg assignment\n", binkegg)
-		keggIsBin = true
-	} else {
-		keggIsBin = false
-	}
-<<<<<<< HEAD
-	if (bintaxflag != "") {
-		fmt.Fprintf(os.Stderr,"Binary taxonomy file %s will be used for taxonomy tree construction\n", bintaxflag)
-=======
-	if bintaxflag != "" {
-		fmt.Fprintf(os.Stderr, "Binary taxonomy file %s will be used for taxonomy tree construction\n", bintaxflag)
->>>>>>> e89fd5ad3651902c534e4c995e3d1f4805443d73
-		taxIsBin = true
-	} else {
-		taxIsBin = false
-	}
+
+	// The blast file is the first unparsed argument
 	blastfile = flag.Arg(0)
 	if verflag {
 		fmt.Printf("blast2lca\nVERSION: %.3f\n\n", VERSION)
@@ -141,78 +72,57 @@ func init() {
 		fmt.Printf("\nA blast file is mandatory\n\n")
 		os.Exit(1)
 	}
-	runtime.GOMAXPROCS(cpuflag)
+	runtime.GOMAXPROCS(procsflag)
+}
+
+func bl2lca (queryBlock blastm8.BlastBlock, res chan<- string, taxDB *taxonomy.Taxonomy, levs [][]byte) {
+	queryRec := blastm8.ParseRecord(queryBlock, bscLimFactor)
+	taxids := make([]int, 0, len(queryRec.Hits))
+	for _, gibs := range queryRec.Hits {
+		taxid, err := taxDB.TaxidFromGi(gibs.GI())
+		if err != nil {
+			log.Printf("WARNING: Taxid can't be retrieved from %s -- Ignoring this record\n", gibs.GI())
+			continue
+		} else {
+			taxids = append(taxids, taxid)
+		}
+	}
+	var atLevs [][]byte
+	var allLevs []byte
+	lcaNode, err := taxDB.LCA(taxids...)
+	if err != nil {
+		atLevs = make([][]byte, 1)
+		atLevs[0] = taxonomy.Unknown
+	} else {
+		if len(levs[0]) != 0 {
+			atLevs = taxDB.AtLevels(lcaNode, levs...)
+		}
+	}
+	allLevs = bytes.Join(atLevs, []byte{';'})
+	msg := fmt.Sprintf("%s\t%s\t%s\t%s\n", queryRec.Query, lcaNode.Name, lcaNode.Taxon, allLevs)
+	res <- msg
+	return
 }
 
 func main() {
-	opts := &taxonomy.InOpts{
-<<<<<<< HEAD
-	Nodes : nodesflag,
-	Names : namesflag,
-	Dict  : dictflag,
-	Bintax : bintaxflag,
-	TaxIsBin : taxIsBin,
-	Savemem : savememflag,
-	}
-	levs := bytes.Split([]byte(taxlevel), []byte{':'}, -1)
-=======
-		Nodes:    nodesflag,
-		Names:    namesflag,
-		Dict:     dictflag,
-		Bintax:   bintaxflag,
-		TaxIsBin: taxIsBin,
-		Savemem:  savememflag,
-	}
 	levs := bytes.Split([]byte(taxlevel), []byte{':'})
->>>>>>> e89fd5ad3651902c534e4c995e3d1f4805443d73
-	taxDB, err := taxonomy.New(opts)
+	taxDB, err := taxonomy.New(nodesflag, namesflag, dictflag, savememflag)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "ERROR : Impossible to get a valid Taxonomy: %s\n", err)
 		os.Exit(1)
 	}
 
 	// BLAST
-	blastf, eopen := os.OpenFile(blastfile, os.O_RDONLY, 0644)
+	blastf, eopen := os.OpenFile(blastfile, os.O_RDONLY, 0644) // Use os.Open instead?
 	if eopen != nil {
-		fmt.Fprintf(os.Stderr, "file %s doesn't exist\n", blastfile)
+		fmt.Fprintf(os.Stderr, "ERROR: Unable to open file %s: %s\n", blastfile, eopen)
 		os.Exit(1)
 	}
 	defer blastf.Close()
 
-	blastbuf := bufio.NewReader(io.Reader(blastf))
-	var keggDB kegg.Mapper
-<<<<<<< HEAD
-	keggflag = false
-=======
-//	keggflag = false
->>>>>>> e89fd5ad3651902c534e4c995e3d1f4805443d73
-	if keggflag == true {
-		keggDB, err = kegg.Load(gi2kegg, binkegg, savememflag)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "I can't load the Kegg database: %s", err)
-			os.Exit(1)
-		}
-	}
-	queryChan := make(chan *blastm8.QueryRes) // TODO: Should we do this buffered?
-<<<<<<< HEAD
-//	doneChan := make(chan bool)               // TODO: Should we do this buffered?
-	launched := 0
-	finished := make(chan bool) // TODO: Needed that much?? Profile... any performance impact?
-//	go blastm8.Procfile(blastbuf, queryChan, doneChan, keggflag)
-	go blastm8.Procfile(blastbuf, queryChan, keggflag)
+	blastbuf := bufio.NewReaderSize(io.Reader(blastf), DEFAULT_BLAST_BUFFER_SIZE)
 
-LOOP:	for {
-		if k, ok := <-queryChan; ok {
-//			fmt.Fprintf(os.Stderr, "%v", k)
-			launched++
-			go func() {
-				taxids := make([]int, 0, 100) 
-=======
-	//	doneChan := make(chan bool)                    // TODO: Should we do this buffered?
-	launched := 0
-	finished := make(chan bool) // TODO: Needed that much?? Profile... any performance impact?
-	//	go blastm8.Procfile(blastbuf, queryChan, doneChan, keggflag)
-	go blastm8.Procfile(blastbuf, queryChan, keggflag)
+	blastBlockChan := make(chan *blastm8.BlastBlock, 100)
 
 	if cpuprofile != "" {
 		f, err := os.Create(cpuprofile)
@@ -231,83 +141,58 @@ LOOP:	for {
 		pprof.WriteHeapProfile(f)
 		f.Close()
 	}
+	go blastm8.Procfile(blastbuf, blastBlockChan)
 
-	t1 := time.Nanoseconds()
-LOOP:
-	for {
-		if k, ok := <-queryChan; ok {
-			launched++
-			go func() {
-				taxids := make([]int, 0, 100)
->>>>>>> e89fd5ad3651902c534e4c995e3d1f4805443d73
-				bscLim := k.Best.GetBitsc() * bscLimFactor
-				for _, gibs := range k.Hits {
-					taxid, err := taxDB.TaxidFromGi(gibs.GetGI())
-					if err != nil {
-						continue
-					}
-					if gibs.GetBitsc() >= bscLim {
-						taxids = append(taxids, taxid)
-					} else {
-						break
-					}
+	t1 := time.Now()
+	totalQueries := -1
+	if order {
+		resChan := make(chan (chan string), 100)
+		launched := 0
+		done := 0
+	LOOP1:	for {
+		select {
+			case ch2 := <- resChan:
+				fmt.Print(<-ch2)
+				done++
+				if done == totalQueries {
+					break LOOP1
 				}
-
-<<<<<<< HEAD
-//				fmt.Fprintf(os.Stderr, "Query: %s => TAXIDS: %v\n", k.Query, taxids)
-				lcaNode, err := taxDB.LCA(taxids...)
-//				fmt.Fprintf(os.Stderr, "LCANODE:\n", lcaNode)
-//				os.Exit(0)
-				var atLevs [][]byte
-				if err != nil { 
-=======
-				lcaNode, err := taxDB.LCA(taxids...)
-				var atLevs [][]byte
-				if err != nil {
->>>>>>> e89fd5ad3651902c534e4c995e3d1f4805443d73
-					atLevs = make([][]byte, 1)
-					atLevs[0] = []byte("unknown")
+			case block, ok := <- blastBlockChan:
+				if ok {
+					chSec := make (chan string)
+					resChan <- chSec
+					go bl2lca(*block, chSec, taxDB, levs)
+					launched++
 				} else {
-					atLevs = taxDB.AtLevels(lcaNode, levs...)
+					totalQueries = launched
 				}
-
-				allLevs := bytes.Join(atLevs, []byte(";"))
-
-				keggIDs := ""
-				for _, hits := range k.BySubj {
-					hitBsLimit := hits.Best.GetBitsc() * bscLimFactor
-					for _, hit := range hits.Recs {
-						if hit.GetBitsc() < hitBsLimit {
-							break
-						}
-						kegg, err := keggDB.Gi2Kegg(hit.GetGI())
-						if err != nil {
-							fmt.Fprintf(os.Stderr, "ERROR: Got an error from kegg.Gi2Kegg: %s\n", err)
-						}
-						if kegg != nil {
-<<<<<<< HEAD
-							keggIDs += fmt.Sprintf("%s", kegg)
-=======
-							keggIDs += fmt.Sprintf("%s;", kegg)
->>>>>>> e89fd5ad3651902c534e4c995e3d1f4805443d73
-							break
-						}
-					}
-				}
-				printf("%s\t%s\t%s\n", k.Query, allLevs, keggIDs)
-				finished <- true
-			}()
-		} else {
-			for i := 0; i < launched; i++ {
-				<-finished
 			}
-			break LOOP
+		}
+	} else {
+		resChan := make(chan string, 100)
+		launched := 0
+		done := 0
+	LOOP2:	for {
+		select {
+			case msg := <- resChan:
+				fmt.Print(msg)
+				done++
+				if done == totalQueries {
+					break LOOP2
+				}
+			case block, ok := <- blastBlockChan:
+				if ok {
+					go bl2lca(*block, resChan, taxDB, levs)
+					launched++
+				} else {
+					totalQueries = launched
+				}
+			}
 		}
 	}
-<<<<<<< HEAD
-=======
-	t2 := time.Nanoseconds()
-	secs := float32(t2-t1)/1e9;
-	fmt.Fprintf(os.Stderr, "%d sequences analyzed in %.3f seconds (%d sequences per second)\n", launched, secs, int32(float32(launched) / secs))
->>>>>>> e89fd5ad3651902c534e4c995e3d1f4805443d73
+	t2 := time.Now()
+	dur := t2.Sub(t1)
+	secs := dur.Seconds()
+	log.Printf("%d sequences analyzed in %.3f seconds (%d sequences per second)\n", totalQueries, secs, int32(float64(totalQueries) / secs))
 }
+

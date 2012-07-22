@@ -2,10 +2,11 @@ package wcl
 
 import (
 	"os"
+	"io"
 	"bufio"
 )
 
-func FromFile (fname string) (int, os.Error) {
+func FromFile (fname string) (int, error) {
 	nlines := 0
 	fh, err := os.Open(fname)
 	defer fh.Close()
@@ -15,7 +16,7 @@ func FromFile (fname string) (int, os.Error) {
 	buf := bufio.NewReader(fh)
 	for {
 		_, _, err := buf.ReadLine()
-		if err == os.EOF {
+		if err == io.EOF {
 			return nlines, nil
 		}
 		nlines++

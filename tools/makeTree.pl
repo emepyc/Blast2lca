@@ -3,6 +3,7 @@
 use strict;
 use warnings;
 use Data::Dumper;
+use Bio::LITE::Taxonomy::NCBI;
 
 use CGI;
 
@@ -187,20 +188,27 @@ function hideshow (contentid) {
 }
 
 EOSCRIPT
-
-
-
+    
+print STDERR "Loading TaxonomyDB... ";
+my $taxDB = Bio::LITE::Taxonomy::NCBI->new(
+    names => '/Users/miguel/repos/src/Blast2lca/taxonomyDB/names.dmp',
+    nodes => '/Users/miguel/repos/src/Blast2lca/taxonomyDB/nodes.dmp',
+    );
+print STDERR "Ok\n";
 my ($fin) = @ARGV;
 
 open my $fh, "<", $fin or die $!;
 
-my @taxes = map {chomp; (split /\t/)[1]} (<$fh>);
+my @taxIDs = map {chomp; (split /\t/)[1]} (<$fh>);
+print STDERR Dumper \@taxIDs;
+
+my @taxes = map { $taxDB->get_taxonomy($taxDB->get_taxid_from_name($_)) } @taxIDs;
+
+print STDERR Dumper \@taxes;
 
 my $q = new CGI;
-#my $t = $q->param("taxonomy");
 my $tree_ref = tree_of_lists (\@taxes);
 
-#print $q->header();
 print $q->start_html (
     -style => {'code' => $css},
     -script => [
