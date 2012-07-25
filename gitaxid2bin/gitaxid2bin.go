@@ -3,7 +3,7 @@
 package main
 
 import (
-	"Blast2lca/giTaxid"
+	"github.com/emepyc/Blast2lca/giTaxid"
 	"fmt"
 	"os"
 	"time"
