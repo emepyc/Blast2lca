@@ -2,8 +2,8 @@
 package main
 
 import (
-	"Blast2lca/blastm8"
-	"Blast2lca/taxonomy"
+	"github.com/emepyc/Blast2lca/blastm8"
+	"github.com/emepyc/Blast2lca/taxonomy"
 	"fmt"
 	"os"
 	"bufio"

@@ -15,8 +15,8 @@ import (
 	"strconv"
 	"time"
 	"math"
-	"Blast2lca/giTaxid"
-	"Blast2lca/wcl"
+	"github.com/emepyc/Blast2lca/giTaxid"
+	"github.com/emepyc/Blast2lca/wcl"
 )
 // TODO : Factor out LCA code in a different source file
 const sep = "\t|\t"
