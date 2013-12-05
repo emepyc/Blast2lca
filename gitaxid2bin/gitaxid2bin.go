@@ -30,7 +30,7 @@ func init () {
 
 func usage() {
 	fmt.Fprintf(os.Stderr, "\n%s converts a list of gi => taxid mapping files to binary format\n", os.Args[0])
-	fmt.Fprintf(os.Stderr, "The resulting binary mapper is written on the file specified by the -outfile parameter\n")
+	fmt.Fprintf(os.Stderr, "The resulting binary mapper is written on the file specified by the -outbin parameter\n")
 	fmt.Fprintf(os.Stderr, "Usage: %s gi_taxid_[nucl|prot].dmp...\n\n", os.Args[0])
 	flag.PrintDefaults()
 	fmt.Fprintf(os.Stderr, "\n")

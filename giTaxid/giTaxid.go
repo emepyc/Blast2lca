@@ -52,7 +52,7 @@ func (r *OnFile) GiTaxid ( gi int ) ( int, error ) {
 	f := r.FileMap
 	pos := int64(gi * 3)
 
-	if pos > r.FileLen - 24 {   // 3 bytes
+	if pos >= r.FileLen {   // 3 bytes
 		return -1, errors.New(fmt.Sprintf("GI too high: %d\n", gi))
 	}
 

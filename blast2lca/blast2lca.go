@@ -17,7 +17,7 @@ import (
 	"log"
 )
 
-const VERSION = 0.3
+const VERSION = 0.4
 
 const (
 	DEFAULT_BLAST_BUFFER_SIZE = 200*1024*1024     // Default size for blast reader is 200Mb. TODO -- Try other sizes and profile

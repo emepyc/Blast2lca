@@ -1,26 +1,37 @@
-Blast2lca 0.300 (Jul 2012) README file
+Blast2lca 0.400 (Dec 2013) README file
 
 TUTORIAL
 ========
 
-blast2lca is a fast and light implementation of the XXX algorithm (REF) to calculate the lowest common ancestor ...
+Blast2lca is a simple and fast tool to help in the taxonomical classification of biological sequences based on BLAST searches.
 It has been primarily used as part of computational pipelines in the analysis of the taxonomic content of metagenomic samples.
-If you want to try blast2lca before reading the whole documentation, follow these steps:
+If you want to try blast2lca follow these steps:
 
-1.- Downloads:
-1.- Download:
-1.1.- Blast2lca binaries (blast2lca and gitaxid2bin) from GitHub (alternatively, install Blast2lca with "go get" (see below))
-1.2.- The NCBI's taxonomy database from ftp://ftp.ncbi.nih.gov/pub/taxonomy/ (in particular the following files: taxdump.tar.gz, and the gi_taxid_[prot/nucl].dmp file/s needed). Uncompress & untar taxdump.tar.gz to get the names.dmp and nodes.dmp files.
+1.- Installation:
 
-2.- Reformat the database files:
-2.1.- gi_taxid_[prot/nucl].dmp :
-  + cd into the directory you downloaded gi_taxid_[prot/nucl].dmp
-  + run gitaxid2bin in that directory
-  + a new file (gi_taxid_[prot/nucl].bin) should appear in that folder
+1.1.- Install Go (programming language) from http://golang.org
 
-3.- Run the program:
-For example:
-$ blast2lca -savemem -dict db/gi_taxid_prot.bin -nodes db/nodes.dmp -names db/names.dmp metagenome.blout > metagenome.lca
+1.2.- Install Blast2lca with the following commands:
+  $ go get github.com/emepyc/Blast2lca/blast2lca
+  $ go get github.com/emepyc/Blast2lca/gitaxid2bin
+
+2.- Downloads:
+
+2.1.- The NCBI's taxonomy database from ftp://ftp.ncbi.nih.gov/pub/taxonomy/taxdump.tar.gz
+  $ wget ftp://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdump.tar.gz
+
+2.2.- The NCBI's GI to taxonomy mapping from ftp://ftp.ncbi.nih.gov/pub/taxonomy/gi_taxid_[prot/nucl].dmp.gz
+  $ wget wget ftp://ftp.ncbi.nlm.nih.gov/pub/taxonomy/gi_taxid_prot.dmp.gz
+
+2.3.- Uncompress & untar taxdump.tar.gz to get the names.dmp and nodes.dmp files.
+  $ gunzip gi_taxid_prot.dmp.gz
+  $ tar -xzvf taxdump.tar.gz
+
+3.- Format the database files: (resulting file is gi_taxid_prot.bin)
+  $ gitaxid2bin gitaxid2bin ncbi_taxonomy/gi_taxid_prot.dmp
+
+4.- Run the program:
+  $ blast2lca -savemem -dict gi_taxid_prot.bin -nodes nodes.dmp -names names.dmp metagenome.blout.127 > metagenome.lca
 
 
 INTRODUCTION
@@ -59,47 +70,12 @@ Of course, Blast2lca doesn't give you all the other goodies that MEGAN offers yo
 
 
 
-INSTALLATION:
-=============
-
-It is recommended to use the binaries provided with the distribution. If you need a binary not available in this site you can ask me and I will try to build it for you. Alternatively, you can compile the program yourself.
-
-To build the blast2lca binary you need the Go developing tools (available at http://golang.org). Remember to set the environmental variable $GOROOT as described in the GO documentation.
-
-export GOROOT=<directory_where_you_installed_go>
-
-Then download the Blast2lca source code from GitHub. Once you have it, uncompress and:
-
-cd Blast2lca-xxxx
-make
-
-
-
 COMMON USAGE:
 =============
 
 1.- Taxonomy DB preparation:
 ----------------------------
-The first time you use this software (and in general everytime you want to update the Taxonomy database) you should prepare the Taxonomy database for its usage with Blast2lca. Follow these steps:
-
-1.- Download the Taxonomy database from NCBI's site (only taxdump.tgz and gi_taxid[nucl|prot].dmp.gz are needed).
-
-$ wget ftp://ftp.ncbi.nih.gov/pub/taxonomy/taxdump.tar.gz
-$ wget ftp://ftp.ncbi.nih.gov/pub/taxonomy/gi_taxid_nucl.dmp.gz
-
-2.- Uncompress & untar
-
-$ tar -xzvf taxdump.tar.gz
-$ gunzip gi_taxid_nucl.dmp.gz # or gi_taxid_prot.dmp.gz
-
-3.- Convert gi_taxid_[prot|nucl].dmp to binary format:
-
-$ perl /path/to/Blast2lca/tools/tax2bin2.pl gi_taxid_nucl.dmp > gi_taxid_nucl.bin
-
-Were "/path/to/Blast2lca/" is the path where you have downloaded Blast2lca.
-
-Note: In the above steps substitute "gi_taxid_nucl.dmp.gz" by "gi_taxid_prot.dmp.gz" if your blasts have been run against a protein database (nr).
-
+The first time you use this software (and in general everytime you want to update the Taxonomy database) you should prepare the Taxonomy database for its usage with Blast2lca [See above for details]
 
 2.- Run the program:
 --------------------
@@ -127,17 +103,8 @@ Where options are:
               Path to the names.dmp file downloaded from the NCBI's Taxonomy DB
               Defaults to "names.dmp"
 
-      --bintax: [EXPERIMENTAL]
-              Taxonomy in binary format (from tax2bin).
-
       --dict:
               Path to the gi2taxid binary file you have obtained from the previous step
-
-      --gi2kegg:
-              Path to the genes_ncbi-gi.list (from KEGG)
-
-      --binkegg:
-              genes_ncbi-gi.list in binary format (from kegg2bin)
 
       --levels:
              The taxonomic levels you want from the LCA.
@@ -160,8 +127,7 @@ GCQ6XTU01A3NC4	Bacteria;Firmicutes;Bacilli;Streptococcaceae
 
 As a fist global visualization of the result you can run the script makeTree.pl (under the tools/ directory) to generate a tree in HTML (+CSS +JavaScript) that can be visualized with any web browser. See the tools/makeTree.README file for (a bit) more information.
 
-Functional annotations are based on the best annotated non-overlapping hits, i.e, a sequence can have more than one annotation.
-For example b2632;b2632 means that 2 non-overlapping proteins with the same function have been detected in the read.
+You can also convert the output of blast2lca in a format compatible with MEGAN using the script located in tools/to_megan.pl.
 
 
 BUGS & CONTACT:
