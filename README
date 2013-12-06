@@ -11,9 +11,26 @@ If you want to try blast2lca follow these steps:
 
 1.1.- Install Go (programming language) from http://golang.org
 
-1.2.- Install Blast2lca with the following commands:
+1.2.- Set the $GOPATH environmental variable. For example:
+   $ mkdir $HOME/gocode
+   $ export GOPATH=$HOME/gocode
+   [ Long story here: http://golang.org/cmd/go/#hdr-GOPATH_environment_variable ]
+
+1.3.- Include the $GOPATH/bin directory in your $PATH (even if it doesn't exist yet)
+   $ export PATH=$PATH:$GOPATH
+
+1.4.- You can add the following lines to your ~/.profile to make these changes permanent.
+     export GOPATH=$HOME/gocode
+     export PATH=$PATH:$GOPATH
+
+1.5.- Install Blast2lca with the following commands:
   $ go get github.com/emepyc/Blast2lca/blast2lca
   $ go get github.com/emepyc/Blast2lca/gitaxid2bin
+
+1.6.- Make sure that your $GOPATH and $PATH variables are set correctly:
+  $ which blast2lca
+  $ which gitaxid2bin
+  Both commands should give you the path to the just installed tools.
 
 2.- Downloads:
 
