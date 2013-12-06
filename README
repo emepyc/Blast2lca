@@ -28,7 +28,7 @@ If you want to try blast2lca follow these steps:
   $ tar -xzvf taxdump.tar.gz
 
 3.- Format the database files: (resulting file is gi_taxid_prot.bin)
-  $ gitaxid2bin gitaxid2bin ncbi_taxonomy/gi_taxid_prot.dmp
+  $ gitaxid2bin ncbi_taxonomy/gi_taxid_prot.dmp
 
 4.- Run the program:
   $ blast2lca -savemem -dict gi_taxid_prot.bin -nodes nodes.dmp -names names.dmp metagenome.blout.127 > metagenome.lca
