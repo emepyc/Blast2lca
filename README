@@ -31,7 +31,7 @@ If you want to try blast2lca follow these steps:
   $ gitaxid2bin ncbi_taxonomy/gi_taxid_prot.dmp
 
 4.- Run the program:
-  $ blast2lca -savemem -dict gi_taxid_prot.bin -nodes nodes.dmp -names names.dmp metagenome.blout.127 > metagenome.lca
+  $ blast2lca -savemem -dict gi_taxid_prot.bin -nodes nodes.dmp -names names.dmp sample/metagenome.blout.127 > metagenome.lca
 
 
 INTRODUCTION
