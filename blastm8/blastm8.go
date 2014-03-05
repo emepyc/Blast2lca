@@ -223,7 +223,6 @@ func parseblast(line []byte) (*Hit, error) {
 	
 	parts := bytes.Split(line, []byte("\t"))
 //	parts := getFields(line)
-	var bitscStr []byte
 	bitscStr := bytes.TrimSpace(parts[11])
 	// if parts[11][0] == 32 {
 	// 	bitscStr = parts[11][1:]
