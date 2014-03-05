@@ -41,14 +41,16 @@ If you want to try blast2lca follow these steps:
   $ wget wget ftp://ftp.ncbi.nlm.nih.gov/pub/taxonomy/gi_taxid_prot.dmp.gz
 
 2.3.- Uncompress & untar taxdump.tar.gz to get the names.dmp and nodes.dmp files.
-  $ gunzip gi_taxid_prot.dmp.gz
+  $ gunzip gi_taxid_prot.dmp.gz # or gi_taxid_nucl.dmp.gz
   $ tar -xzvf taxdump.tar.gz
 
 3.- Format the database files: (resulting file is gi_taxid_prot.bin)
-  $ gitaxid2bin ncbi_taxonomy/gi_taxid_prot.dmp
+  $ gitaxid2bin ncbi_taxonomy/gi_taxid_prot.dmp # or ncbi_taxonomy/gi_taxid_nucl.dmp
 
 4.- Run the program:
-  $ blast2lca -savemem -dict gi_taxid_prot.bin -nodes nodes.dmp -names names.dmp sample/metagenome.blout.127 > metagenome.lca
+  $ blast2lca -savemem -dict gi_taxid_prot.bin -nodes nodes.dmp -names names.dmp sample/metagenome.blout.127 > metagenome.lca # or gi_taxid_nucl.bin
+
+Note: You should always use the correct gi_taxid_[prot|nucl].dmp file that matches with your blast results. ie. if your blast has been run against the nr database you should use the gi_taxid_nucl.dmp file, otherwise blast2lca won't be able to map any of your GIs in the dict file.
 
 
 INTRODUCTION
@@ -130,7 +132,7 @@ Where options are:
 	     You can pass a series of taxonomy levels separated by ":", see the example below
 
 Example:
-$ ./blast2lca -names names.dmp -nodes nodes.dmp -dict gi_taxid_prot.bin -levels superkingdom:phylum:class:family blastm8.txt > lca.txt
+$ ./blast2lca -names names.dmp -nodes nodes.dmp -dict gi_taxid_prot.bin -levels=superkingdom:phylum:class:family blastm8.txt > lca.txt
 
 3.- Output:
 ----------
