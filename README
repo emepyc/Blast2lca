@@ -107,7 +107,7 @@ Where options are:
       --help:
               Prints the usage of the software and exits
 
-      --ncpus:
+      --nprocs:
               Number of CPUs to use (defaults to 4)
 
       --savemem:
