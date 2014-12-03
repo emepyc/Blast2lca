@@ -202,7 +202,7 @@ func ParseRecord (bb BlastBlock, scLim float64) *QueryRes {
 	for _, blastLine := range recs {
 		nextHit, err := parseblast(blastLine)
 		if err != nil {
-			log.Printf("WARNING: Ignoring blast line: %s\n", blastLine)
+			log.Printf("WARNING: Ignoring this blast line: %s\n%s\n", blastLine, err)
 			continue
 		}
 		qRes.Hits = append(qRes.Hits, nextHit)

@@ -2,34 +2,35 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
+	"flag"
+	"fmt"
+	"io"
+	"log"
+	"os"
+	"runtime"
+	"runtime/pprof"
+	"sync"
+	"time"
+
 	"github.com/emepyc/Blast2lca/blastm8"
 	"github.com/emepyc/Blast2lca/taxonomy"
-	"fmt"
-	"os"
-	"bufio"
-	"io"
-	"runtime"
-	"flag"
-	"sync"
-	"bytes"
-	"time"
-	"runtime/pprof"
-	"log"
 )
 
-const VERSION = 0.4
+const VERSION = 0.5
 
 const (
-	DEFAULT_BLAST_BUFFER_SIZE = 200*1024*1024     // Default size for blast reader is 200Mb. TODO -- Try other sizes and profile
+	DEFAULT_BLAST_BUFFER_SIZE = 200 * 1024 * 1024 // Default size for blast reader is 200Mb. TODO -- Try other sizes and profile
 )
 
 var (
-	cpuprofile, memprofile                                string
-	procsflag                                             int
-	dictflag, nodesflag, namesflag, blastfile, taxlevel   string
-	savememflag, verflag, helpflag, order                 bool
-	bscLimFactor                                          float64
-	printfLock                                            sync.Mutex // TODO: Try to avoid this mutex -- Print from a channel -- Make it optionally ordered
+	cpuprofile, memprofile                              string
+	procsflag                                           int
+	dictflag, nodesflag, namesflag, blastfile, taxlevel string
+	savememflag, verflag, helpflag, order               bool
+	bscLimFactor                                        float64
+	printfLock                                          sync.Mutex // TODO: Try to avoid this mutex -- Print from a channel -- Make it optionally ordered
 )
 
 // printf performs threadsafe prints to os.Stdout
@@ -75,7 +76,7 @@ func init() {
 	runtime.GOMAXPROCS(procsflag)
 }
 
-func bl2lca (queryBlock blastm8.BlastBlock, res chan<- string, taxDB *taxonomy.Taxonomy, levs [][]byte) {
+func bl2lca(queryBlock blastm8.BlastBlock, res chan<- string, taxDB *taxonomy.Taxonomy, levs [][]byte) {
 	queryRec := blastm8.ParseRecord(queryBlock, bscLimFactor)
 	taxids := make([]int, 0, len(queryRec.Hits))
 	for _, gibs := range queryRec.Hits {
@@ -145,21 +146,23 @@ func main() {
 
 	t1 := time.Now()
 	totalQueries := -1
+	chanBufferSize := 10000
 	if order {
-		resChan := make(chan (chan string), 100)
+		resChan := make(chan (chan string), chanBufferSize)
 		launched := 0
 		done := 0
-	LOOP1:	for {
-		select {
-			case ch2 := <- resChan:
+	LOOP1:
+		for {
+			select {
+			case ch2 := <-resChan:
 				fmt.Print(<-ch2)
 				done++
 				if done == totalQueries {
 					break LOOP1
 				}
-			case block, ok := <- blastBlockChan:
+			case block, ok := <-blastBlockChan:
 				if ok {
-					chSec := make (chan string)
+					chSec := make(chan string)
 					resChan <- chSec
 					go bl2lca(*block, chSec, taxDB, levs)
 					launched++
@@ -169,18 +172,19 @@ func main() {
 			}
 		}
 	} else {
-		resChan := make(chan string, 100)
+		resChan := make(chan string, chanBufferSize)
 		launched := 0
 		done := 0
-	LOOP2:	for {
-		select {
-			case msg := <- resChan:
+	LOOP2:
+		for {
+			select {
+			case msg := <-resChan:
 				fmt.Print(msg)
 				done++
 				if done == totalQueries {
 					break LOOP2
 				}
-			case block, ok := <- blastBlockChan:
+			case block, ok := <-blastBlockChan:
 				if ok {
 					go bl2lca(*block, resChan, taxDB, levs)
 					launched++
@@ -193,6 +197,5 @@ func main() {
 	t2 := time.Now()
 	dur := t2.Sub(t1)
 	secs := dur.Seconds()
-	log.Printf("%d sequences analyzed in %.3f seconds (%d sequences per second)\n", totalQueries, secs, int32(float64(totalQueries) / secs))
+	log.Printf("%d sequences analyzed in %.3f seconds (%d sequences per second)\n", totalQueries, secs, int32(float64(totalQueries)/secs))
 }
-
