@@ -28,9 +28,11 @@ var (
 	cpuprofile, memprofile                              string
 	procsflag                                           int
 	dictflag, nodesflag, namesflag, blastfile, taxlevel string
-	savememflag, verflag, helpflag, order               bool
-	bscLimFactor                                        float64
-	printfLock                                          sync.Mutex // TODO: Try to avoid this mutex -- Print from a channel -- Make it optionally ordered
+	savememflag, verflag, helpflag                      bool
+	// order                                               bool
+	bscLimFactor float64
+	printfLock   sync.Mutex // TODO: Try to avoid this mutex -- Print from a channel -- Make it optionally ordered
+	totalQueries int
 )
 
 // printf performs threadsafe prints to os.Stdout
@@ -52,7 +54,7 @@ func init() {
 	flag.StringVar(&cpuprofile, "cpuprof", "", "Write cpu profile to file")
 	flag.StringVar(&memprofile, "memprof", "", "Write mem profile to file")
 	flag.Float64Var(&bscLimFactor, "bsfactor", 0.9, "Limit factor for bit score significance")
-	flag.BoolVar(&order, "order", false, "Keep the sequences output in the same order as in the input blast file")
+	// flag.BoolVar(&order, "order", false, "Keep the sequences output in the same order as in the input blast file")
 	flag.Parse()
 
 	// The blast file is the first unparsed argument
@@ -76,33 +78,45 @@ func init() {
 	runtime.GOMAXPROCS(procsflag)
 }
 
-func bl2lca(queryBlock blastm8.BlastBlock, res chan<- string, taxDB *taxonomy.Taxonomy, levs [][]byte) {
-	queryRec := blastm8.ParseRecord(queryBlock, bscLimFactor)
-	taxids := make([]int, 0, len(queryRec.Hits))
-	for _, gibs := range queryRec.Hits {
-		taxid, err := taxDB.TaxidFromGi(gibs.GI())
-		if err != nil {
-			log.Printf("WARNING: Taxid can't be retrieved from %s -- Ignoring this record\n", gibs.GI())
-			continue
-		} else {
-			taxids = append(taxids, taxid)
+func bl2lca(BlastChan <-chan *blastm8.BlastBlock, taxDB *taxonomy.Taxonomy, levs [][]byte, done chan<- struct{}) {
+	for {
+		select {
+		case queryBlock, ok := <-BlastChan:
+			if ok {
+				totalQueries++
+				queryRec := blastm8.ParseRecord(*queryBlock, bscLimFactor)
+				taxids := make([]int, 0, len(queryRec.Hits))
+				for _, gibs := range queryRec.Hits {
+					taxid, err := taxDB.TaxidFromGi(gibs.GI())
+					if err != nil {
+						log.Printf("WARNING: Taxid can't be retrieved from %s -- Ignoring this record\n", gibs.GI())
+						continue
+					} else {
+						taxids = append(taxids, taxid)
+					}
+				}
+				var atLevs [][]byte
+				var allLevs []byte
+				lcaNode, err := taxDB.LCA(taxids...)
+				if err != nil {
+					atLevs = make([][]byte, 1)
+					atLevs[0] = taxonomy.Unknown
+				} else {
+					if len(levs[0]) != 0 {
+						atLevs = taxDB.AtLevels(lcaNode, levs...)
+					}
+				}
+				allLevs = bytes.Join(atLevs, []byte{';'})
+				msg := fmt.Sprintf("%s\t%s\t%s\t%s\n", queryRec.Query, lcaNode.Name, lcaNode.Taxon, allLevs)
+				fmt.Print(msg)
+			} else {
+				done <- struct{}{}
+				return
+			}
+		default:
 		}
+
 	}
-	var atLevs [][]byte
-	var allLevs []byte
-	lcaNode, err := taxDB.LCA(taxids...)
-	if err != nil {
-		atLevs = make([][]byte, 1)
-		atLevs[0] = taxonomy.Unknown
-	} else {
-		if len(levs[0]) != 0 {
-			atLevs = taxDB.AtLevels(lcaNode, levs...)
-		}
-	}
-	allLevs = bytes.Join(atLevs, []byte{';'})
-	msg := fmt.Sprintf("%s\t%s\t%s\t%s\n", queryRec.Query, lcaNode.Name, lcaNode.Taxon, allLevs)
-	res <- msg
-	return
 }
 
 func main() {
@@ -123,8 +137,6 @@ func main() {
 
 	blastbuf := bufio.NewReaderSize(io.Reader(blastf), DEFAULT_BLAST_BUFFER_SIZE)
 
-	blastBlockChan := make(chan *blastm8.BlastBlock, 100)
-
 	if cpuprofile != "" {
 		f, err := os.Create(cpuprofile)
 		if err != nil {
@@ -142,60 +154,18 @@ func main() {
 		pprof.WriteHeapProfile(f)
 		f.Close()
 	}
-	go blastm8.Procfile(blastbuf, blastBlockChan)
 
+	blastBlockChan := make(chan *blastm8.BlastBlock, 200)
+	done := make(chan struct{})
 	t1 := time.Now()
-	totalQueries := -1
-	chanBufferSize := 10000
-	if order {
-		resChan := make(chan (chan string), chanBufferSize)
-		launched := 0
-		done := 0
-	LOOP1:
-		for {
-			select {
-			case ch2 := <-resChan:
-				fmt.Print(<-ch2)
-				done++
-				if done == totalQueries {
-					break LOOP1
-				}
-			case block, ok := <-blastBlockChan:
-				if ok {
-					chSec := make(chan string)
-					resChan <- chSec
-					go bl2lca(*block, chSec, taxDB, levs)
-					launched++
-				} else {
-					totalQueries = launched
-				}
-			}
-		}
-	} else {
-		resChan := make(chan string, chanBufferSize)
-		launched := 0
-		done := 0
-	LOOP2:
-		for {
-			select {
-			case msg := <-resChan:
-				fmt.Print(msg)
-				done++
-				if done == totalQueries {
-					break LOOP2
-				}
-			case block, ok := <-blastBlockChan:
-				if ok {
-					go bl2lca(*block, resChan, taxDB, levs)
-					launched++
-				} else {
-					totalQueries = launched
-				}
-			}
-		}
-	}
+
+	go blastm8.Procfile(blastbuf, blastBlockChan)
+	go bl2lca(blastBlockChan, taxDB, levs, done)
+	<-done
+
 	t2 := time.Now()
 	dur := t2.Sub(t1)
 	secs := dur.Seconds()
 	log.Printf("%d sequences analyzed in %.3f seconds (%d sequences per second)\n", totalQueries, secs, int32(float64(totalQueries)/secs))
+
 }
