@@ -12,43 +12,66 @@ If you want to try blast2lca follow these steps:
 1.1.- Install Go (programming language) from http://golang.org
 
 1.2.- Set the $GOPATH environmental variable. For example:
-   $ mkdir $HOME/gocode
-   $ export GOPATH=$HOME/gocode
-   [ Long story here: http://golang.org/cmd/go/#hdr-GOPATH_environment_variable ]
+```
+$ mkdir $HOME/gocode
+$ export GOPATH=$HOME/gocode
+```
+[ Long story here: http://golang.org/cmd/go/#hdr-GOPATH_environment_variable ]
 
 1.3.- Include the $GOPATH/bin directory in your $PATH (even if it doesn't exist yet)
-   $ export PATH=$PATH:$GOPATH
+```
+$ export PATH=$PATH:$GOPATH
+```
 
 1.4.- You can add the following lines to your ~/.profile to make these changes permanent.
-     export GOPATH=$HOME/gocode
-     export PATH=$PATH:$GOPATH
+```
+$ export GOPATH=$HOME/gocode
+$ export PATH=$PATH:$GOPATH
+```
 
 1.5.- Install Blast2lca with the following commands:
-  $ go get github.com/emepyc/Blast2lca/blast2lca
-  $ go get github.com/emepyc/Blast2lca/gitaxid2bin
-
+```
+$ go get github.com/emepyc/Blast2lca/blast2lca
+$ go get github.com/emepyc/Blast2lca/gitaxid2bin
+```
 1.6.- Make sure that your $GOPATH and $PATH variables are set correctly:
-  $ which blast2lca
-  $ which gitaxid2bin
-  Both commands should give you the path to the just installed tools.
+```
+$ which blast2lca
+$ which gitaxid2bin
+```
+Both commands should give you the path to the just installed tools.
 
 2.- Downloads:
 
 2.1.- The NCBI's taxonomy database from ftp://ftp.ncbi.nih.gov/pub/taxonomy/taxdump.tar.gz
-  $ wget ftp://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdump.tar.gz
+```
+$ wget ftp://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdump.tar.gz
+or
+$ curl ftp://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdump.tar.gz > taxdump.tar.gz
+```
 
 2.2.- The NCBI's GI to taxonomy mapping from ftp://ftp.ncbi.nih.gov/pub/taxonomy/gi_taxid_[prot/nucl].dmp.gz
-  $ wget wget ftp://ftp.ncbi.nlm.nih.gov/pub/taxonomy/gi_taxid_prot.dmp.gz
+```
+$ wget wget ftp://ftp.ncbi.nlm.nih.gov/pub/taxonomy/gi_taxid_prot.dmp.gz
+or
+$ curl ftp://ftp.ncbi.nlm.nih.gov/pub/taxonomy/gi_taxid_prot.dmp.gz > gi_taxid_prot.dmp.gz
+```
 
 2.3.- Uncompress & untar taxdump.tar.gz to get the names.dmp and nodes.dmp files.
-  $ gunzip gi_taxid_prot.dmp.gz # or gi_taxid_nucl.dmp.gz
-  $ tar -xzvf taxdump.tar.gz
+```
+$ gunzip gi_taxid_prot.dmp.gz # or gi_taxid_nucl.dmp.gz
+$ tar -xzvf taxdump.tar.gz
+```
 
 3.- Format the database files: (resulting file is gi_taxid_prot.bin)
-  $ gitaxid2bin ncbi_taxonomy/gi_taxid_prot.dmp # or ncbi_taxonomy/gi_taxid_nucl.dmp
+```
+$ gitaxid2bin ncbi_taxonomy/gi_taxid_prot.dmp # or ncbi_taxonomy/gi_taxid_nucl.dmp
+```
 
 4.- Run the program:
-  $ blast2lca -savemem -dict gi_taxid_prot.bin -nodes nodes.dmp -names names.dmp sample/metagenome.blout.127 > metagenome.lca # or gi_taxid_nucl.bin
+```
+$ blast2lca -savemem -dict gi_taxid_prot.bin -nodes nodes.dmp -names names.dmp sample/metagenome.blout.127 > metagenome.lca # or gi_taxid_nucl.bin
+```
 
 Note: You should always use the correct gi_taxid_[prot|nucl].dmp file that matches with your blast results. ie. if your blast has been run against the nr database you should use the gi_taxid_nucl.dmp file, otherwise blast2lca won't be able to map any of your GIs in the dict file.
 
