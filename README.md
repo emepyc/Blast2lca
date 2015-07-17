@@ -161,11 +161,14 @@ $ ./blast2lca -names names.dmp -nodes nodes.dmp -dict gi_taxid_prot.bin -levels=
 ----------
 For each input query sequence you will obtain its header and its taxons according to the LCA (separated by a tab).
 Example:
+
+```
 GCQ6XTU01A3NBL	Bacteria;Firmicutes;Bacilli;Streptococcaceae
 GCQ6XTU01A3N9G	Bacteria;Cyanobacteria;uc_Cyanobacteria;uc_Chroococcales
 GCQ6XTU01A3N88	Bacteria;Proteobacteria;Gammaproteobacteria;Pasteurellaceae
 GCQ6XTU01A3N8G	Bacteria;Proteobacteria;Deltaproteobacteria;Myxococcaceae
 GCQ6XTU01A3NC4	Bacteria;Firmicutes;Bacilli;Streptococcaceae
+```
 
 As a fist global visualization of the result you can run the script makeTree.pl (under the tools/ directory) to generate a tree in HTML (+CSS +JavaScript) that can be visualized with any web browser. See the tools/makeTree.README file for (a bit) more information.
 
@@ -175,6 +178,3 @@ You can also convert the output of blast2lca in a format compatible with MEGAN u
 BUGS & CONTACT:
 ===============
 For bug reports, feature requests or comments, please send an email to emepyc@gmail.com
-
-
-
