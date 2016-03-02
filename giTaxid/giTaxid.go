@@ -92,7 +92,7 @@ func readLastGI (fname string) (gi int, ok bool) {
 		return
 	}
 	buf := bufio.NewReader(fh)
-	prevLine, isIndex , err := buf.ReadLine()		
+	prevLine, isIndex , err := buf.ReadLine()
 	if err != nil {
 		log.Printf("WARNING: Unable to read file: %s\n", err)
 		return
@@ -103,7 +103,7 @@ func readLastGI (fname string) (gi int, ok bool) {
 	}
 	for {
 		line, isIndex , err := buf.ReadLine()
-		if err == io.EOF { 
+		if err == io.EOF {
 			parts := bytes.SplitN(prevLine, []byte("\t"), 2)
 			gi, err = strconv.Atoi(string(parts[0]))
 			if err != nil {
@@ -139,7 +139,7 @@ func readLatestGI(files []string) (gi int) {
 			dur := t2.Sub(t1)
 			log.Printf("Done (%.3f secs)\n", dur.Seconds())
 		} else {
-			log.Fatal("ERROR: File %s can't be processed\n", fname)
+			log.Fatalf("ERROR: File %s can't be processed\n", fname)
 		}
 	}
 	return gi
@@ -205,7 +205,7 @@ func New (files []string) (OnMemory, error) {
 		return m, nil
 	}
 	return m, nil // Never used
-} 
+}
 
 // Store stores the binary representation of the Gi => Taxid mapper into the fname file
 // Returns nil or any error it may encounter in the process
@@ -266,4 +266,3 @@ func Load (fname string, savemem bool) ( GiMapper, error ) {
 	fmt.Fprintf(os.Stderr, "Done (%.3f secs)\n", dur.Seconds())
 	return OnMemory(b), nil
 }
-
