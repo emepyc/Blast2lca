@@ -145,7 +145,8 @@ func (b Header) extractGI () (int, error) {
 //ProcFile reads the query results from a blast m8-formatted file and passes the results
 //to the queryChan channel. What is passed is the raw block of lines corresponding to a single query in the blast file.
 func Procfile(iblast *bufio.Reader, queryChan chan<- *BlastBlock) {
-	subjCollect := bytes.NewBuffer(make([]byte, 0, 100000))
+	bufLen := 10000
+	subjCollect := bytes.NewBuffer(make([]byte, 0, bufLen))
 	var query []byte
 	for ;; {
 		line, _, ierr := iblast.ReadLine() // TODO: Check isIndex
@@ -155,6 +156,7 @@ func Procfile(iblast *bufio.Reader, queryChan chan<- *BlastBlock) {
 			close(queryChan)
 			return
 		}
+
 		currQuery, qerr := extractQuery(line)
 		if qerr != nil {
 			log.Printf("WARNING: I can't extract the query field from this line: %s\n%s\n", line, qerr)
@@ -163,19 +165,22 @@ func Procfile(iblast *bufio.Reader, queryChan chan<- *BlastBlock) {
 		if (query == nil) {
 			query = currQuery
 		}
+		// Still same query
 		if (bytes.Equal(currQuery, query)) {
 			_, err := subjCollect.Write(append(line, '\n'))
 			if err != nil {
 				log.Println("WARNING: Error collecting line from blast:\nLINE:\n%s\nERROR: %s\n", line, err)
 			}
-		} else {
+		} else { // New Query
 			block := subjCollect.Bytes()
 			passQuery := make([]byte, len(query))
 			copy (passQuery, query)
+
 			queryChan <- &BlastBlock{ header: Header(passQuery), block : block[:len(block)-1] }
-			subjCollect = bytes.NewBuffer(make([]byte, 0, 100000))
+			subjCollect = bytes.NewBuffer(make([]byte, 0, bufLen))
 			subjCollect.Write(append(line, '\n'))
-			query = currQuery
+			query = make([]byte, len(currQuery))
+			copy(query, currQuery)
 		}
 	}
 }
@@ -189,6 +194,8 @@ func extractQuery (line []byte) ([]byte, error) {
 	if pos == 0 {
 		return nil, errors.New("Line with a blank query field (starts with a <tab> character")
 	}
+	q := line[0:pos]
+
 	return line[0:pos], nil
 }
 
@@ -220,7 +227,7 @@ func ParseRecord (bb BlastBlock, scLim float64) *QueryRes {
 
 func parseblast(line []byte) (*Hit, error) {
 	var newB *Hit
-	
+
 	parts := bytes.Split(line, []byte("\t"))
 //	parts := getFields(line)
 	bitscStr := bytes.TrimSpace(parts[11])

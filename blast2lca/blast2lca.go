@@ -78,7 +78,22 @@ func init() {
 	runtime.GOMAXPROCS(procsflag)
 }
 
-func bl2lca(BlastChan <-chan *blastm8.BlastBlock, taxDB *taxonomy.Taxonomy, levs [][]byte, done chan<- struct{}) {
+func output(outResChan <-chan string, done chan<-struct{}) {
+	for {
+		select {
+		case outStr, ok := <-outResChan:
+			if ok {
+				printf(outStr)
+			} else {
+				done <- struct{}{}
+				return
+			}
+		default:
+		}
+	}
+}
+
+func bl2lca(BlastChan <-chan *blastm8.BlastBlock, taxDB *taxonomy.Taxonomy, levs [][]byte, outResChan chan<- string) {
 	for {
 		select {
 		case queryBlock, ok := <-BlastChan:
@@ -89,7 +104,7 @@ func bl2lca(BlastChan <-chan *blastm8.BlastBlock, taxDB *taxonomy.Taxonomy, levs
 				for _, gibs := range queryRec.Hits {
 					taxid, err := taxDB.TaxidFromGi(gibs.GI())
 					if err != nil {
-						log.Printf("WARNING: Taxid can't be retrieved from %s -- Ignoring this record\n", gibs.GI())
+						log.Printf("WARNING: Taxid can't be retrieved from %d -- Ignoring this record\n", gibs.GI())
 						continue
 					} else {
 						taxids = append(taxids, taxid)
@@ -107,15 +122,18 @@ func bl2lca(BlastChan <-chan *blastm8.BlastBlock, taxDB *taxonomy.Taxonomy, levs
 					}
 				}
 				allLevs = bytes.Join(atLevs, []byte{';'})
+				// log.Printf("%s", queryRec.Query)
 				msg := fmt.Sprintf("%s\t%s\t%s\t%s\n", queryRec.Query, lcaNode.Name, lcaNode.Taxon, allLevs)
-				fmt.Print(msg)
+				// fmt.Print(msg)
+				// printf(msg);
+				outResChan <- msg
 			} else {
-				done <- struct{}{}
+				close(outResChan)
+				// done <- struct{}{}
 				return
 			}
 		default:
 		}
-
 	}
 }
 
@@ -159,8 +177,11 @@ func main() {
 	done := make(chan struct{})
 	t1 := time.Now()
 
+	outResChan := make(chan string, 200)
+
 	go blastm8.Procfile(blastbuf, blastBlockChan)
-	go bl2lca(blastBlockChan, taxDB, levs, done)
+	go bl2lca(blastBlockChan, taxDB, levs, outResChan)
+	go output(outResChan, done)
 	<-done
 
 	t2 := time.Now()

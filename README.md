@@ -1,4 +1,4 @@
-Blast2lca 0.600 (Dec 2014) README file
+Blast2lca 0.700 (Mar 2016) README file
 
 TUTORIAL
 ========
