@@ -18,7 +18,7 @@ import (
 	"github.com/emepyc/Blast2lca/taxonomy"
 )
 
-const VERSION = 0.6
+const VERSION = 0.7
 
 const (
 	DEFAULT_BLAST_BUFFER_SIZE = 200 * 1024 * 1024 // Default size for blast reader is 200Mb. TODO -- Try other sizes and profile
@@ -78,7 +78,7 @@ func init() {
 	runtime.GOMAXPROCS(procsflag)
 }
 
-func output(outResChan <-chan string, done chan<-struct{}) {
+func output(outResChan <-chan string, done chan<- struct{}) {
 	for {
 		select {
 		case outStr, ok := <-outResChan:
