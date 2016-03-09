@@ -18,7 +18,7 @@ import (
 	"github.com/emepyc/Blast2lca/taxonomy"
 )
 
-const VERSION = 0.7
+const VERSION = 0.8
 
 const (
 	DEFAULT_BLAST_BUFFER_SIZE = 200 * 1024 * 1024 // Default size for blast reader is 200Mb. TODO -- Try other sizes and profile
