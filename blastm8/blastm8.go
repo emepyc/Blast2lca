@@ -194,7 +194,6 @@ func extractQuery (line []byte) ([]byte, error) {
 	if pos == 0 {
 		return nil, errors.New("Line with a blank query field (starts with a <tab> character")
 	}
-	q := line[0:pos]
 
 	return line[0:pos], nil
 }
