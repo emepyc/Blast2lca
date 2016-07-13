@@ -67,6 +67,9 @@ func (t Taxonomy) LCA(values ...int) (*taxnode, error) {
 }
 
 func lcaHelper(E, L, H []int, M [][]int, i, j int) int {
+	if i == j {
+		return i
+	}
 	v1 := H[i-1]
 	v2 := H[j-1]
 	if v1 > v2 {
