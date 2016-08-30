@@ -1,5 +1,11 @@
 Blast2lca 0.800 (Mar 2016) README file
 
+<aside class="warning">
+This package is now deprecated.
+NCBI has [phased out sequence GI numbers](http://www.ncbi.nlm.nih.gov/news/03-02-2016-phase-out-of-GI-numbers/). Since Blast2lca relies heavily on them to map sequence IDs to taxIDs this package won't work in its present form with new versions of NCBI databases.
+If you want to help upgrading blast2lca, please get in touch.
+</aside>
+
 TUTORIAL
 ========
 
