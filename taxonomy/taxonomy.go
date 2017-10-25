@@ -325,7 +325,7 @@ func New(nodesfn, namesfn, dictfn string, savemem bool) (*Taxonomy, error) {
 	fmt.Fprintf(os.Stderr, "Preprocessing RMQ ... ")
 	s1 = time.Now()
 	M := makeMatrix(maxNodes)
-	rmqPrep(&M, L[:len(L)-1], maxNodes)
+	rmqPrep(&M, L[:len(L)-1], maxNodes * 2)
 	s2 = time.Now()
 	dur = s2.Sub(s1)
 	fmt.Fprintf(os.Stderr, "Done (%.3f sec)\n", dur.Seconds())
